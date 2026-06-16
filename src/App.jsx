@@ -13,6 +13,15 @@ async function sbFetch(path, opts = {}) {
   return text ? JSON.parse(text) : [];
 }
 
+async function adminAction(action, payload={}) {
+  const res=await fetch(`${SB_URL}/functions/v1/admin-actions`,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":`Bearer ${SB_KEY}`},
+    body:JSON.stringify({admin_token:localStorage.getItem("ap_admin_token"),action,payload}),
+  });
+  return res.json();
+}
+
 async function getAIAnalysis(history) {
   const summary = history.slice(-100).map(h => `Q${h.q_number} (${h.subtopic_name}): ${h.is_correct ? "✓" : "✗"}`).join("\n");
   const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -25,11 +34,6 @@ async function getAIAnalysis(history) {
   return data.content?.[0]?.text || "Unable to generate analysis.";
 }
 
-function generateLicenceKey(type) {
-  const prefix = type.toUpperCase().replace("_","").slice(0,4);
-  const part = () => Math.random().toString(36).substring(2,6).toUpperCase();
-  return `${prefix}-${part()}-${part()}-${part()}`;
-}
 
 const LICENCE_COLS = {
   air_atpl: ["air_atpl","air_cpl","air_ppl","applicable_all"],
@@ -235,20 +239,14 @@ function AdminKeys({dark:d}) {
   const [search,setSearch]=useState("");
 
   useEffect(()=>{load();},[]);
-  async function load(){setLoading(true);try{setKeys(await sbFetch("licence_keys?select=*&order=created_at.desc&limit=200"));}catch(e){console.error(e);}finally{setLoading(false);}}
+  async function load(){setLoading(true);try{const r=await adminAction("keys.list");setKeys(r.data||[]);}catch(e){console.error(e);}finally{setLoading(false);}}
 
   async function generate(){
     setGenerating(true);
     try{
-      const vf=new Date(),vu=new Date();
-      vu.setMonth(vu.getMonth()+form.duration);
-      const gen=[];
-      for(let i=0;i<form.quantity;i++){
-        const kc=generateLicenceKey(form.licenceType);
-        const r=await sbFetch("licence_keys",{method:"POST",body:JSON.stringify({key_code:kc,licence_type:form.licenceType,aircraft_type:form.licenceType.startsWith("air")?"AIR":"HELI",valid_from:vf.toISOString(),valid_until:vu.toISOString(),is_active:true,student_name:form.studentName,notes:form.notes})});
-        gen.push(r[0]);
-      }
-      setNewKeys(gen);
+      const r=await adminAction("keys.create",{licence_type:form.licenceType,aircraft_type:form.licenceType.startsWith("air")?"AIR":"HELI",duration_days:form.duration*30,quantity:form.quantity,student_name:form.studentName,notes:form.notes});
+      if(!r.success){alert(r.error||"Failed to generate key.");return;}
+      setNewKeys(r.data||[]);
       await load();
     }catch(e){alert("Failed to generate key.");}
     finally{setGenerating(false);}
@@ -256,15 +254,12 @@ function AdminKeys({dark:d}) {
 
   async function revoke(id){
     if(!window.confirm("Revoke this key? Student loses access immediately."))return;
-    await sbFetch(`licence_keys?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({is_active:false})});
+    await adminAction("keys.revoke",{id});
     await load();
   }
 
   async function extend(id,months){
-    const k=keys.find(x=>x.id===id);
-    const nd=new Date(k.valid_until);
-    nd.setMonth(nd.getMonth()+months);
-    await sbFetch(`licence_keys?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({valid_until:nd.toISOString()})});
+    await adminAction("keys.extend",{id,days:months*30});
     await load();
   }
 
@@ -378,22 +373,18 @@ function AdminStudents({dark:d}) {
   async function load(){
     setLoading(true);
     try{
-      const [users,keys,progress]=await Promise.all([
-        sbFetch("users?select=*&order=created_at.desc"),
-        sbFetch("licence_keys?select=*"),
-        sbFetch("user_progress?select=user_id,is_correct"),
-      ]);
+      const r=await adminAction("students.list");
+      const {users=[],keys=[]}=r.data||{};
       setStudents(users.map(u=>{
         const lic=keys.find(k=>k.user_id===u.id&&k.is_active);
-        const up=progress.filter(p=>p.user_id===u.id);
-        return{...u,licence:lic,totalAnswered:up.length,accuracy:up.length>0?Math.round((up.filter(p=>p.is_correct).length/up.length)*100):0};
+        return{...u,licence:lic,totalAnswered:u.total_answered||0,accuracy:u.accuracy||0};
       }));
     }catch(e){console.error(e);}
     finally{setLoading(false);}
   }
 
-  async function suspend(id,reason){await sbFetch(`users?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({is_suspended:true,suspension_reason:reason})});await load();}
-  async function unsuspend(id){await sbFetch(`users?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({is_suspended:false,suspension_reason:null})});await load();}
+  async function suspend(id,reason){await adminAction("students.suspend",{id,reason});await load();}
+  async function unsuspend(id){await adminAction("students.unsuspend",{id});await load();}
 
   const filtered=students.filter(s=>{
     if(filter==="active"&&(!s.licence||new Date(s.licence?.valid_until)<new Date()))return false;
@@ -454,16 +445,14 @@ function AdminSecurity({dark:d}) {
   async function load(){
     setLoading(true);
     try{
-      const [s,a]=await Promise.all([
-        sbFetch("active_sessions?select=*&order=last_active.desc&limit=100"),
-        sbFetch("login_attempts?select=*&order=attempted_at.desc&limit=50"),
-      ]);
-      setSessions(s);setAttempts(a);
+      const r=await adminAction("security.list");
+      const {sessions=[],attempts=[]}=r.data||{};
+      setSessions(sessions);setAttempts(attempts);
     }catch(e){console.error(e);}
     finally{setLoading(false);}
   }
 
-  async function terminate(id){await sbFetch(`active_sessions?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({is_active:false})});await load();}
+  async function terminate(id){await adminAction("security.terminate",{id});await load();}
 
   const activeSessions=sessions.filter(s=>s.is_active);
   const suspicious=activeSessions.filter((s,_,arr)=>arr.filter(x=>x.user_id===s.user_id).length>1);
@@ -536,24 +525,27 @@ function AdminAdmins({currentAdmin,dark:d}) {
   const [pwMsg,setPwMsg]=useState("");
 
   useEffect(()=>{load();},[]);
-  async function load(){setLoading(true);try{setAdmins(await sbFetch("admins?select=*&order=created_at.asc"));}catch(e){console.error(e);}finally{setLoading(false);}}
+  async function load(){setLoading(true);try{const r=await adminAction("admins.list");setAdmins(r.data||[]);}catch(e){console.error(e);}finally{setLoading(false);}}
 
   async function create(){
     if(!form.username||!form.password){alert("Username and password required.");return;}
     setSaving(true);
-    try{await sbFetch("admins",{method:"POST",body:JSON.stringify({username:form.username,password_hash:btoa(form.password),full_name:form.fullName,email:form.email,is_active:true})});setForm({username:"",password:"",fullName:"",email:""});setShowForm(false);await load();}
-    catch(e){alert("Failed to create admin.");}
+    try{
+      const r=await adminAction("admins.create",{username:form.username,password:form.password,full_name:form.fullName,email:form.email});
+      if(!r.success){alert(r.error||"Failed to create admin.");return;}
+      setForm({username:"",password:"",fullName:"",email:""});setShowForm(false);await load();
+    }catch(e){alert("Failed to create admin.");}
     finally{setSaving(false);}
   }
 
-  async function toggle(id,active){await sbFetch(`admins?id=eq.${id}`,{method:"PATCH",body:JSON.stringify({is_active:!active})});await load();}
+  async function toggle(id,active){await adminAction("admins.toggle",{id,is_active:!active});await load();}
 
   async function changePw(){
     setPwMsg("");
-    if(btoa(pw.current)!==currentAdmin.password_hash){setPwMsg("Current password incorrect.");return;}
     if(pw.newPw.length<6){setPwMsg("New password must be at least 6 characters.");return;}
     if(pw.newPw!==pw.confirm){setPwMsg("Passwords do not match.");return;}
-    await sbFetch(`admins?id=eq.${currentAdmin.id}`,{method:"PATCH",body:JSON.stringify({password_hash:btoa(pw.newPw)})});
+    const r=await adminAction("admins.changepw",{password:pw.newPw});
+    if(!r.success){setPwMsg(r.error||"Failed to change password.");return;}
     setPwMsg("✅ Password changed successfully!");setPw({current:"",newPw:"",confirm:""});
   }
 
@@ -692,11 +684,15 @@ function LoginScreen({onLogin,onAdminLogin,dark:d}) {
     e.preventDefault();setErr("");setLoading(true);
     try{
       if(email==="Admin"||email.toLowerCase()==="admin"){
-        const admins=await sbFetch("admins?username=eq.Admin&select=*");
-        if(admins.length&&admins[0].password_hash===btoa(password)){
-          await sbFetch(`admins?id=eq.${admins[0].id}`,{method:"PATCH",body:JSON.stringify({last_login:new Date().toISOString()})});
-          onAdminLogin(admins[0]);return;
-        }else{setErr("Invalid admin credentials.");return;}
+        const res=await fetch(`${SB_URL}/functions/v1/admin-login`,{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":`Bearer ${SB_KEY}`},
+          body:JSON.stringify({username:"Admin",password}),
+        });
+        const data=await res.json();
+        if(!data.success){setErr(data.error||"Invalid admin credentials.");return;}
+        localStorage.setItem("ap_admin_token",data.admin_token);
+        onAdminLogin(data.admin);return;
       }
       const res=await fetch(`${SB_URL}/functions/v1/auth-login`,{
         method:"POST",
@@ -1169,6 +1165,7 @@ export default function App() {
   function handleLogout(){
     if(sessionToken)sbFetch(`active_sessions?session_token=eq.${sessionToken}`,{method:"PATCH",body:JSON.stringify({is_active:false})}).catch(()=>{});
     localStorage.removeItem("ap_session_token");
+    localStorage.removeItem("ap_admin_token");
     setUser(null);setLicence(null);setAdmin(null);setSessionToken(null);setSubjects([]);setHistory([]);
     setStats({xp:0,streak:0,totalAnswered:0,totalCorrect:0,dailyChallengesDone:0,bestMockScore:0,bestSubjectMastery:0,dailyChallengeToday:false});
     setScreen("login");
