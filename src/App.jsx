@@ -1125,12 +1125,39 @@ export default function App() {
   const [xpEarned,setXpEarned]=useState(0);
 
   useEffect(()=>{
+    const token=localStorage.getItem("ap_session_token");
+    if(!token)return;
+    setLoading(true);
+    fetch(`${SB_URL}/functions/v1/session-check`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":`Bearer ${SB_KEY}`},
+      body:JSON.stringify({session_token:token}),
+    })
+    .then(r=>r.json())
+    .then(async data=>{
+      if(data.valid){
+        setUser(data.user);setLicence(data.licence);setSessionToken(token);
+        await loadUserData(data.user,data.licence);
+        setScreen("home");
+      }else{
+        localStorage.removeItem("ap_session_token");
+        setLoading(false);
+      }
+    })
+    .catch(()=>setLoading(false));
+  },[]);
+
+  useEffect(()=>{
     if(!user||!sessionToken)return;
     const iv=setInterval(async()=>{
       try{
-        const s=await sbFetch(`active_sessions?session_token=eq.${sessionToken}&is_active=eq.true&select=id`);
-        if(!s.length){alert("Your session was terminated. Please log in again.");handleLogout();return;}
-        await sbFetch(`active_sessions?session_token=eq.${sessionToken}`,{method:"PATCH",body:JSON.stringify({last_active:new Date().toISOString()})});
+        const r=await fetch(`${SB_URL}/functions/v1/session-check`,{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":`Bearer ${SB_KEY}`},
+          body:JSON.stringify({session_token:sessionToken}),
+        });
+        const data=await r.json();
+        if(!data.valid){alert("Your session was terminated. Please log in again.");handleLogout();}
       }catch(e){console.error("Heartbeat:",e);}
     },60000);
     return()=>clearInterval(iv);
