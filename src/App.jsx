@@ -25,10 +25,6 @@ async function getAIAnalysis(history) {
   return data.content?.[0]?.text || "Unable to generate analysis.";
 }
 
-function generateSessionToken() {
-  return Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2,"0")).join("");
-}
-
 function generateLicenceKey(type) {
   const prefix = type.toUpperCase().replace("_","").slice(0,4);
   const part = () => Math.random().toString(36).substring(2,6).toUpperCase();
@@ -702,21 +698,15 @@ function LoginScreen({onLogin,onAdminLogin,dark:d}) {
           onAdminLogin(admins[0]);return;
         }else{setErr("Invalid admin credentials.");return;}
       }
-      const users=await sbFetch(`users?email=eq.${encodeURIComponent(email)}&select=*`);
-      if(!users.length){setErr("No account found with this email.");return;}
-      const user=users[0];
-      if(user.is_suspended){setErr("Your account has been suspended. Please contact Flyaway Training Academy.");return;}
-      if(user.password_hash!==btoa(password)){setErr("Incorrect password.");return;}
-      const licences=await sbFetch(`licence_keys?user_id=eq.${user.id}&is_active=eq.true&select=*`);
-      if(!licences.length){setErr("No active subscription. Please activate a code first.");return;}
-      const licence=licences[0];
-      if(new Date(licence.valid_until)<new Date()){setErr("Your subscription has expired. Contact FTA to renew.");return;}
-      await sbFetch("login_attempts",{method:"POST",body:JSON.stringify({user_id:user.id,email,device_info:navigator.userAgent.slice(0,100),success:true})});
-      const token=generateSessionToken();
-      await sbFetch(`users?id=eq.${user.id}`,{method:"PATCH",body:JSON.stringify({current_session_token:token,last_login:new Date().toISOString(),login_count:(user.login_count||0)+1})});
-      await sbFetch("active_sessions",{method:"POST",body:JSON.stringify({user_id:user.id,session_token:token,device_info:navigator.userAgent.slice(0,100),last_active:new Date().toISOString()})});
-      localStorage.setItem("ap_session_token",token);
-      onLogin(user,licence,token);
+      const res=await fetch(`${SB_URL}/functions/v1/auth-login`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SB_KEY}`},
+        body:JSON.stringify({email,password,device_info:navigator.userAgent.slice(0,100),ip_address:null}),
+      });
+      const data=await res.json();
+      if(!data.success){setErr(data.error||"Login failed.");return;}
+      localStorage.setItem("ap_session_token",data.session_token);
+      onLogin(data.user,data.licence,data.session_token);
     }catch(e){setErr("Login failed. Please try again.");console.error(e);}
     finally{setLoading(false);}
   }
@@ -724,26 +714,22 @@ function LoginScreen({onLogin,onAdminLogin,dark:d}) {
   async function handleActivate(e){
     e.preventDefault();setErr("");setLoading(true);
     try{
-      const keys=await sbFetch(`licence_keys?key_code=eq.${encodeURIComponent(code.trim().toUpperCase())}&select=*`);
-      if(!keys.length){setErr("Invalid activation code. Please check and try again.");return;}
-      const key=keys[0];
-      if(key.user_id){setErr("This code has already been activated on another account.");return;}
-      if(new Date(key.valid_until)<new Date()){setErr("This activation code has expired.");return;}
-      if(!key.is_active){setErr("This code has been revoked. Contact FTA.");return;}
-      let users=await sbFetch(`users?email=eq.${encodeURIComponent(email)}&select=*`);
-      let user=users[0];
-      if(!user){
-        const created=await sbFetch("users",{method:"POST",body:JSON.stringify({email,full_name:email.split("@")[0],password_hash:btoa(password)})});
-        user=created[0];
-      }else{
-        if(user.password_hash!==btoa(password)){setErr("An account with this email already exists. Use correct password or contact FTA.");return;}
-      }
-      await sbFetch(`licence_keys?id=eq.${key.id}`,{method:"PATCH",body:JSON.stringify({user_id:user.id,is_active:true,activated_at:new Date().toISOString()})});
-      const token=generateSessionToken();
-      await sbFetch(`users?id=eq.${user.id}`,{method:"PATCH",body:JSON.stringify({current_session_token:token,last_login:new Date().toISOString(),login_count:1})});
-      await sbFetch("active_sessions",{method:"POST",body:JSON.stringify({user_id:user.id,session_token:token,device_info:navigator.userAgent.slice(0,100),last_active:new Date().toISOString()})});
-      localStorage.setItem("ap_session_token",token);
-      onLogin(user,{...key,user_id:user.id},token);
+      const signupRes=await fetch(`${SB_URL}/functions/v1/auth-signup`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SB_KEY}`},
+        body:JSON.stringify({email,password,full_name:email.split("@")[0],licence_key:code.trim().toUpperCase()}),
+      });
+      const signupData=await signupRes.json();
+      if(!signupData.success){setErr(signupData.error||"Activation failed.");return;}
+      const loginRes=await fetch(`${SB_URL}/functions/v1/auth-login`,{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${SB_KEY}`},
+        body:JSON.stringify({email,password,device_info:navigator.userAgent.slice(0,100),ip_address:null}),
+      });
+      const loginData=await loginRes.json();
+      if(!loginData.success){setErr(loginData.error||"Account created but login failed. Please sign in.");return;}
+      localStorage.setItem("ap_session_token",loginData.session_token);
+      onLogin(loginData.user,loginData.licence,loginData.session_token);
     }catch(e){setErr("Activation failed. Please try again.");console.error(e);}
     finally{setLoading(false);}
   }
