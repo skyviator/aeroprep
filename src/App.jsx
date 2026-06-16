@@ -910,13 +910,26 @@ function ExamPickerScreen({subject,dark:d,onStart,onBack}) {
   );
 }
 
-function QuizScreen({questions,config,dark:d,onComplete}) {
+function QuizScreen({questions,config,dark:d,onComplete,userId}) {
   const [idx,setIdx]=useState(0);
   const [selected,setSelected]=useState(null);
   const [revealed,setRevealed]=useState(false);
   const [answers,setAnswers]=useState([]);
   const [timeLeft,setTimeLeft]=useState(config.timed?config.minutes*60:null);
   const timerRef=useRef(null);
+  const [reportOpen,setReportOpen]=useState(false);
+  const [reportText,setReportText]=useState("");
+  const [reportStatus,setReportStatus]=useState("");
+  async function submitReport(){
+    setReportStatus("sending");
+    try{
+      await sbFetch("question_reports",{method:"POST",body:JSON.stringify({
+        question_id:q.id, user_id:userId||null, comment:reportText.trim()||null
+      })});
+      setReportStatus("done"); setReportText("");
+      setTimeout(()=>{setReportOpen(false);setReportStatus("");},1500);
+    }catch(e){setReportStatus("error");}
+  }
   useEffect(()=>{
     if(config.timed&&timeLeft>0){timerRef.current=setInterval(()=>setTimeLeft(t=>{if(t<=1){clearInterval(timerRef.current);onComplete(answers);return 0;}return t-1;}),1000);}
     return()=>clearInterval(timerRef.current);
@@ -929,7 +942,7 @@ function QuizScreen({questions,config,dark:d,onComplete}) {
     const na=[...answers,{question_id:q.id,q_number:q.q_number,subject_code:q.subject_code,subtopic_name:q.subtopic_name,selected_answer:selected,is_correct:ic}];
     setAnswers(na);
     if(idx+1>=questions.length)onComplete(na);
-    else{setIdx(idx+1);setSelected(null);setRevealed(false);}
+    else{setIdx(idx+1);setSelected(null);setRevealed(false);setReportOpen(false);setReportText("");setReportStatus("");}
   }
   function optLabel(k){return{A:q.option_a,B:q.option_b,C:q.option_c,D:q.option_d}[k];}
   function optStyle(k){
@@ -958,6 +971,18 @@ function QuizScreen({questions,config,dark:d,onComplete}) {
       <div>{["A","B","C","D"].map(k=><button key={k} style={optStyle(k)} onClick={()=>sel(k)}><span style={{fontWeight:700,marginRight:10,opacity:0.5}}>{k}</span>{optLabel(k)}</button>)}</div>
       {revealed&&isPractice&&<div className="scale-in" style={{padding:"14px 18px",borderRadius:12,marginBottom:16,background:selected===q.correct_answer?"rgba(0,212,106,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${selected===q.correct_answer?"rgba(0,212,106,0.3)":"rgba(239,68,68,0.3)"}`}}><p style={{fontSize:14,fontWeight:600,color:selected===q.correct_answer?C.green:C.red}}>{selected===q.correct_answer?"✓ Correct! +10 XP":`✗ Incorrect — answer was ${q.correct_answer}`}</p></div>}
       {(revealed||!isPractice)&&selected&&<button className="ap-btn-primary scale-in" style={{width:"100%",padding:"16px",fontSize:15,marginTop:8}} onClick={next}>{idx+1>=questions.length?"See Results 📊":"Next Question →"}</button>}
+      {!reportOpen&&reportStatus!=="done"&&<button onClick={()=>setReportOpen(true)} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:muted(d),fontSize:12,textDecoration:"underline",cursor:"pointer"}}>Report a problem</button>}
+      {reportOpen&&<div className="scale-in" style={{padding:"14px 18px",borderRadius:12,marginTop:12,background:card(d),border:`1px solid ${border(d)}`}}>
+        {reportStatus==="done"?<p style={{fontSize:13,color:C.green,fontWeight:600,margin:0}}>Thanks — report sent.</p>:<>
+          <p style={{fontSize:13,fontWeight:600,color:text(d),margin:"0 0 8px"}}>Report a problem with this question</p>
+          <textarea value={reportText} onChange={e=>setReportText(e.target.value)} placeholder="What's wrong? (optional)" rows={3} style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${border(d)}`,background:d?"rgba(0,0,0,0.2)":"#fff",color:text(d),fontSize:13,resize:"vertical",fontFamily:"inherit",boxSizing:"border-box"}}/>
+          {reportStatus==="error"&&<p style={{fontSize:12,color:C.red,margin:"6px 0 0"}}>Couldn't send. Try again.</p>}
+          <div style={{display:"flex",gap:8,marginTop:10}}>
+            <button onClick={submitReport} disabled={reportStatus==="sending"} className="ap-btn-primary" style={{flex:1,padding:"10px",fontSize:13,opacity:reportStatus==="sending"?0.6:1}}>{reportStatus==="sending"?"Sending…":"Submit report"}</button>
+            <button onClick={()=>{setReportOpen(false);setReportText("");setReportStatus("");}} style={{flex:1,padding:"10px",fontSize:13,background:"none",border:`1px solid ${border(d)}`,borderRadius:8,color:muted(d),cursor:"pointer"}}>Cancel</button>
+          </div>
+        </>}
+      </div>}
     </div>
   );
 }
@@ -1289,7 +1314,7 @@ export default function App() {
         {screen==="home"&&<HomeScreen user={user} licence={licence} stats={stats} subjects={subjects} history={history} dark={dark} onSelectSubject={s=>{setSelectedSubject(s);setScreen("exam_picker");}} onDailyChallenge={startDailyChallenge}/>}
         {screen==="subjects"&&<SubjectsScreen subjects={subjects} history={history} dark={dark} onSelectSubject={s=>{setSelectedSubject(s);setScreen("exam_picker");}}/>}
         {screen==="exam_picker"&&selectedSubject&&<ExamPickerScreen subject={selectedSubject} dark={dark} onBack={()=>setScreen("subjects")} onStart={cfg=>startQuiz(selectedSubject,cfg)}/>}
-        {screen==="quiz"&&<QuizScreen questions={quizQuestions} config={quizConfig} dark={dark} onComplete={handleQuizComplete}/>}
+        {screen==="quiz"&&<QuizScreen questions={quizQuestions} config={quizConfig} dark={dark} onComplete={handleQuizComplete} userId={user?.id}/>}
         {screen==="results"&&<ResultsScreen answers={quizQuestions.map((q,i)=>({...q,...(history[i]||{})}))} dark={dark} xpEarned={xpEarned} onRetry={()=>{if(selectedSubject)startQuiz(selectedSubject,quizConfig);}} onHome={()=>setScreen("home")}/>}
         {screen==="progress"&&<ProgressScreen history={history} subjects={subjects} stats={stats} dark={dark} onAIAnalysis={handleAIAnalysis} aiLoading={aiLoading}/>}
         {screen==="ai_analysis"&&<AIAnalysisScreen analysis={aiAnalysis} dark={dark} onBack={()=>setScreen("progress")}/>}
