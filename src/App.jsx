@@ -812,7 +812,7 @@ function LoginScreen({onLogin,onAdminLogin,dark:d}) {
         </div>
         <div className="ap-card" style={{padding:32}}>
           <div style={{display:"flex",gap:4,background:d?"rgba(255,255,255,0.05)":"rgba(0,0,0,0.05)",borderRadius:10,padding:4,marginBottom:28}}>
-            {[["login","Sign In"],["activate","Activate Code"]].map(([m,label])=>(
+            {[["login","Sign In"],["activate","Sign Up"]].map(([m,label])=>(
               <button key={m} onClick={()=>{setMode(m);setErr("");}} style={{flex:1,padding:"8px 0",borderRadius:8,fontSize:13,fontWeight:600,background:mode===m?(d?"#1F2937":"#FFF"):"transparent",color:mode===m?text(d):muted(d),border:"none",transition:"all 0.2s"}}>{label}</button>
             ))}
           </div>
@@ -836,7 +836,7 @@ function LoginScreen({onLogin,onAdminLogin,dark:d}) {
             )}
             {err&&<div style={{marginTop:14,padding:"10px 14px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:8,fontSize:13,color:C.red}}>{err}</div>}
             <button className="ap-btn-primary" type="submit" disabled={loading} style={{width:"100%",marginTop:20,opacity:loading?0.7:1}}>
-              {loading?"Please wait…":mode==="login"?"Sign In":"Activate & Start"}
+              {loading?"Please wait…":mode==="login"?"Sign In":"Sign Up & Start"}
             </button>
           </form>
         </div>
