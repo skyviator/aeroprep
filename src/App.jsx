@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Icon } from "./icons.jsx";
 
 const SB_URL = "https://lxzeqqzhsharbocxpvqg.supabase.co";
 const SB_KEY = "sb_publishable_336LVuv08rcJtp86WswWFQ_rugDbPWT";
@@ -1204,7 +1205,7 @@ function ProfileScreen({user,licence,stats,dark:d,toggleDark,onLogout}) {
 }
 
 function BottomNav({screen,onNav,dark:d}) {
-  const items=[{id:"home",icon:"🏠",label:"Home"},{id:"subjects",icon:"📚",label:"Subjects"},{id:"progress",icon:"📊",label:"Progress"},{id:"profile",icon:"👤",label:"Profile"}];
+  const items=[{id:"home",icon:<Icon name="home" size={22} bare style={{verticalAlign:"middle"}} />,label:"Home"},{id:"subjects",icon:"📚",label:"Subjects"},{id:"progress",icon:"📊",label:"Progress"},{id:"profile",icon:"👤",label:"Profile"}];
   return (
     <div style={{position:"fixed",bottom:0,left:0,right:0,background:card(d),borderTop:`1px solid ${border(d)}`,display:"flex",justifyContent:"space-around",padding:"8px 0 max(8px,env(safe-area-inset-bottom))",zIndex:100,backdropFilter:"blur(10px)"}}>
       {items.map(item=><button key={item.id} className={`nav-btn ${screen===item.id?"active":""}`} onClick={()=>onNav(item.id)}><span style={{fontSize:22}}>{item.icon}</span><span style={{fontSize:11}}>{item.label}</span></button>)}
