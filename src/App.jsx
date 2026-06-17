@@ -188,17 +188,17 @@ function AdminDashboard({stats,dark:d}) {
       <h2 style={{fontSize:20,fontWeight:700,color:text(d),marginBottom:20,fontFamily:"'Space Grotesk',sans-serif"}}>Dashboard Overview</h2>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14,marginBottom:24}}>
         {[
-          {icon:"👥",label:"Total Students",value:stats.totalStudents||0,color:text(d)},
-          {icon:"✅",label:"Active Subs",value:stats.activeSubscriptions||0,color:C.green},
-          {icon:"⚠️",label:"Expiring 7d",value:stats.expiringSoon||0,color:C.amber},
-          {icon:"❌",label:"Expired",value:stats.expired||0,color:C.red},
-          {icon:"🔑",label:"Keys Generated",value:stats.totalKeys||0,color:text(d)},
-          {icon:"🔓",label:"Unused Keys",value:stats.unusedKeys||0,color:C.blue},
-          {icon:"📚",label:"Total Questions",value:(stats.totalQuestions||0).toLocaleString(),color:text(d)},
-          {icon:"🎛️",label:"Subjects",value:stats.totalSubjects||0,color:text(d)},
+          {icon:"students",label:"Total Students",value:stats.totalStudents||0,color:text(d)},
+          {icon:"correct",label:"Active Subs",value:stats.activeSubscriptions||0,color:C.green},
+          {icon:"expiry-alert",label:"Expiring 7d",value:stats.expiringSoon||0,color:C.amber},
+          {icon:"incorrect",label:"Expired",value:stats.expired||0,color:C.red},
+          {icon:"licence-key",label:"Keys Generated",value:stats.totalKeys||0,color:text(d)},
+          {icon:"licence-key",label:"Unused Keys",value:stats.unusedKeys||0,color:C.blue},
+          {icon:"subjects",label:"Total Questions",value:(stats.totalQuestions||0).toLocaleString(),color:text(d)},
+          {icon:"analytics",label:"Subjects",value:stats.totalSubjects||0,color:text(d)},
         ].map(s=>(
           <div key={s.label} className="ap-card" style={{padding:18}}>
-            <div style={{fontSize:26,marginBottom:6}}>{s.icon}</div>
+            <div style={{marginBottom:6}}><Icon name={s.icon} size={24} bare /></div>
             <div style={{fontSize:24,fontWeight:800,color:s.color,fontFamily:"'Space Grotesk',sans-serif"}}>{s.value}</div>
             <div style={{fontSize:12,color:muted(d),marginTop:3}}>{s.label}</div>
           </div>
@@ -486,7 +486,7 @@ function AdminSecurity({dark:d}) {
                   <td style={{fontSize:11,color:muted(d)}}>{s.user_id?.slice(0,12)}…</td>
                   <td style={{fontSize:11}}>{s.device_info?.slice(0,40)||"Unknown"}</td>
                   <td style={{fontSize:11,color:muted(d)}}>{new Date(s.last_active).toLocaleString("en-GB")}</td>
-                  <td>{suspicious.find(x=>x.id===s.id)?<span className="tag tag-red">⚠️ Suspicious</span>:<span className="tag tag-green">Normal</span>}</td>
+                  <td>{suspicious.find(x=>x.id===s.id)?<span className="tag tag-red"><Icon name="expiry-alert" size={14} bare /> Suspicious</span>:<span className="tag tag-green">Normal</span>}</td>
                   <td><button className="ap-btn-danger" onClick={()=>terminate(s.id)} style={{padding:"4px 10px",fontSize:11}}>Terminate</button></td>
                 </tr>
               ))}
@@ -549,7 +549,7 @@ function AdminAdmins({currentAdmin,dark:d}) {
     if(pw.newPw!==pw.confirm){setPwMsg("Passwords do not match.");return;}
     const r=await adminAction("admins.changepw",{password:pw.newPw});
     if(!r.success){setPwMsg(r.error||"Failed to change password.");return;}
-    setPwMsg("✅ Password changed successfully!");setPw({current:"",newPw:"",confirm:""});
+    setPwMsg("Password changed successfully!");setPw({current:"",newPw:"",confirm:""});
   }
 
   return (
@@ -560,7 +560,7 @@ function AdminAdmins({currentAdmin,dark:d}) {
       </div>
       <div className="ap-card" style={{padding:20,marginBottom:20,border:`1px solid rgba(59,130,246,0.2)`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><p style={{fontSize:14,fontWeight:600,color:text(d)}}>🔐 Change Your Password</p><p style={{fontSize:12,color:muted(d)}}>Logged in as: {currentAdmin.username}</p></div>
+          <div><p style={{fontSize:14,fontWeight:600,color:text(d),display:"flex",alignItems:"center",gap:6}}><Icon name="security" size={18} bare />Change Your Password</p><p style={{fontSize:12,color:muted(d)}}>Logged in as: {currentAdmin.username}</p></div>
           <button onClick={()=>setShowPw(!showPw)} className="ap-btn-secondary" style={{padding:"8px 16px",fontSize:13}}>{showPw?"Cancel":"Change Password"}</button>
         </div>
         {showPw&&(
@@ -569,7 +569,7 @@ function AdminAdmins({currentAdmin,dark:d}) {
               <div key={f}><label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>{l}</label><input className="ap-input" type="password" style={{padding:"10px 14px",fontSize:13}} value={pw[f]} onChange={e=>setPw({...pw,[f]:e.target.value})}/></div>
             ))}
             <div style={{display:"flex",alignItems:"flex-end"}}><button className="ap-btn-primary" onClick={changePw} style={{padding:"10px 20px",fontSize:13,width:"100%"}}>Update</button></div>
-            {pwMsg&&<div style={{gridColumn:"1/-1",fontSize:13,color:pwMsg.includes("✅")?C.green:C.red}}>{pwMsg}</div>}
+            {pwMsg&&<div style={{gridColumn:"1/-1",fontSize:13,color:pwMsg.includes("successfully")?C.green:C.red,display:"flex",alignItems:"center",gap:6}}>{pwMsg.includes("successfully")&&<Icon name="correct" size={16} bare />}{pwMsg}</div>}
           </div>
         )}
       </div>
@@ -704,7 +704,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
     }catch(e){console.error(e);}
   }
 
-  const TABS=[{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"keys",icon:"🔑",label:"Licence Keys"},{id:"students",icon:"👥",label:"Students"},{id:"reports",icon:"🚩",label:"Reports"},{id:"security",icon:"🛡️",label:"Security"},{id:"admins",icon:"👤",label:"Admins"}];
+  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
 
   return (
     <div style={{minHeight:"100vh",background:bg(d),display:"flex",flexDirection:"column"}}>
@@ -718,14 +718,14 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
           </div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <span style={{fontSize:13,color:muted(d)}}>👤 {admin.username}</span>
-          <button onClick={toggleDark} style={{background:d?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",borderRadius:8,padding:"6px 10px",fontSize:14,color:text(d)}}>{d?"☀️":"🌙"}</button>
+          <span style={{fontSize:13,color:muted(d),display:"inline-flex",alignItems:"center",gap:6}}><Icon name="admin" size={16} bare />{admin.username}</span>
+          <button onClick={toggleDark} style={{background:d?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",borderRadius:8,padding:"6px 10px",fontSize:14,color:text(d)}}>{d?<Icon name="light-mode" size={16} bare/>:<Icon name="dark-mode" size={16} bare/>}</button>
           <button onClick={onLogout} style={{padding:"7px 16px",borderRadius:8,background:"rgba(239,68,68,0.1)",color:C.red,fontSize:13,fontWeight:600,border:"1px solid rgba(239,68,68,0.2)"}}>Sign Out</button>
         </div>
       </div>
       <div style={{display:"flex",flex:1}}>
         <div className="hide-mobile" style={{width:210,background:card(d),borderRight:`1px solid ${border(d)}`,padding:"20px 12px",position:"sticky",top:58,height:"calc(100vh - 58px)",overflowY:"auto"}}>
-          {TABS.map(t=><button key={t.id} className={`admin-nav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}><span style={{fontSize:18}}>{t.icon}</span>{t.label}</button>)}
+          {TABS.map(t=><button key={t.id} className={`admin-nav-btn ${tab===t.id?"active":""}`} onClick={()=>setTab(t.id)}><Icon name={t.icon} size={20} bare />{t.label}</button>)}
         </div>
         <div style={{flex:1,padding:"28px 24px 100px",overflowY:"auto"}}>
           {tab==="dashboard"&&<AdminDashboard stats={stats} dark={d}/>}
@@ -737,7 +737,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
         </div>
       </div>
       <div className="show-mobile" style={{position:"fixed",bottom:0,left:0,right:0,background:card(d),borderTop:`1px solid ${border(d)}`,display:"none",justifyContent:"space-around",padding:"8px 0",zIndex:100}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",color:tab===t.id?C.green:muted(d),fontSize:10,padding:"4px 8px"}}><span style={{fontSize:20}}>{t.icon}</span>{t.label}</button>)}
+        {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,background:"none",color:tab===t.id?C.green:muted(d),fontSize:10,padding:"4px 8px"}}><Icon name={t.icon} size={22} bare />{t.label}</button>)}
       </div>
     </div>
   );
@@ -899,7 +899,7 @@ function HomeScreen({user,licence,stats,subjects,history,dark:d,onSelectSubject,
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><Icon name="daily-challenge" size={22} bare /><span style={{fontSize:14,fontWeight:700,color:C.green}}>Daily Challenge</span><span className="tag tag-green">+50 XP</span></div>
             <p style={{fontSize:13,color:muted(d)}}>10 random questions · All subjects · Timed</p>
           </div>
-          <button className="ap-btn-primary" style={{padding:"10px 18px",fontSize:13,whiteSpace:"nowrap"}}>Fly Now ✈️</button>
+          <button className="ap-btn-primary" style={{padding:"10px 18px",fontSize:13,whiteSpace:"nowrap"}}>Fly Now</button>
         </div>
         {stats.dailyChallengeToday&&<div style={{marginTop:12,padding:"8px 12px",background:"rgba(0,212,106,0.1)",borderRadius:8,fontSize:12,color:C.green,fontWeight:600}}>✓ Challenge completed today!</div>}
       </div>
