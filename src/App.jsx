@@ -849,15 +849,15 @@ function LoginScreen({onLogin,onAdminLogin,dark:d}) {
   );
 }
 
-const SUBJECT_ICONS={"022":"🎛️","021":"⚙️","010":"🌍","033":"✈️","050":"🌤️","062":"🧭","031":"📊","032":"📡","040":"🧠","070":"⚖️","080":"🔧","034":"📻","020":"⚡","091":"📖"};
+const SUBJECT_ICONS={"022":"022-instruments","021":"021-airframe","010":"010-air-law","033":"033-performance","050":"050-meteorology","062":"062-navigation","031":"subjects","032":"subjects","040":"subjects","070":"subjects","080":"subjects","034":"subjects","020":"subjects","091":"subjects"};
 
 function SubjectCard({subject,mastery,dark:d,onClick}) {
-  const icon=SUBJECT_ICONS[subject.subject_code]||"📚";
+  const icon=SUBJECT_ICONS[subject.subject_code]||"subjects";
   const mc=mastery>=80?C.green:mastery>=50?C.amber:C.red;
   return (
     <div className="ap-card ap-card-hover fade-in" onClick={onClick} style={{padding:"20px",cursor:"pointer",transition:"transform 0.15s",position:"relative"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="translateY(0)"}>
       {mastery>=80&&<div style={{position:"absolute",top:12,right:12,fontSize:16}}>🌟</div>}
-      <div style={{fontSize:28,marginBottom:10}}>{icon}</div>
+      <div style={{marginBottom:10}}><Icon name={icon} size={32} bare /></div>
       <div style={{fontSize:11,color:muted(d),fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:4}}>{subject.subject_code}</div>
       <div style={{fontSize:14,fontWeight:600,color:text(d),marginBottom:12,lineHeight:1.3}}>{subject.subject_name}</div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
@@ -1119,13 +1119,13 @@ function ProgressScreen({history,subjects,stats,dark:d,onAIAnalysis,aiLoading}) 
       <h1 style={{fontSize:22,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif",color:text(d),marginBottom:24}}>Your Progress</h1>
       <div className="ap-card" style={{padding:20,marginBottom:24,border:`1px solid rgba(59,130,246,0.25)`}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontSize:20}}>🤖</span><span style={{fontSize:15,fontWeight:700,color:C.blue}}>AI Analysis</span></div><p style={{fontSize:13,color:muted(d)}}>{history.length<20?`Answer ${20-history.length} more questions to unlock`:"Get a personalised study plan powered by Claude AI"}</p></div>
-          <button className="ap-btn-primary" disabled={history.length<20||aiLoading} onClick={onAIAnalysis} style={{padding:"10px 18px",fontSize:13,opacity:history.length<20?0.4:1,background:C.blue,whiteSpace:"nowrap"}}>{aiLoading?"Analysing…":"Analyse ✨"}</button>
+          <div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><Icon name="ai-analysis" size={22} bare /><span style={{fontSize:15,fontWeight:700,color:C.blue}}>AI Analysis</span></div><p style={{fontSize:13,color:muted(d)}}>{history.length<20?`Answer ${20-history.length} more questions to unlock`:"Get a personalised study plan powered by Claude AI"}</p></div>
+          <button className="ap-btn-primary" disabled={history.length<20||aiLoading} onClick={onAIAnalysis} style={{padding:"10px 18px",fontSize:13,opacity:history.length<20?0.4:1,background:C.blue,whiteSpace:"nowrap"}}>{aiLoading?"Analysing…":<span style={{display:"flex",alignItems:"center",gap:6}}>Analyse <Icon name="ai-analysis" size={16} bare /></span>}</button>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12,marginBottom:24}}>
-        {[{label:"Total answered",value:history.length.toLocaleString(),icon:"📝"},{label:"Overall accuracy",value:`${ovr}%`,icon:"🎯"},{label:"Current streak",value:`${stats.streak} days`,icon:"🔥"},{label:"Total XP",value:stats.xp.toLocaleString(),icon:"⚡"}].map(s=>(
-          <div key={s.label} className="ap-card" style={{padding:"18px 16px"}}><div style={{fontSize:24,marginBottom:6}}>{s.icon}</div><div style={{fontSize:22,fontWeight:700,color:text(d),fontFamily:"'Space Grotesk',sans-serif"}}>{s.value}</div><div style={{fontSize:12,color:muted(d),marginTop:3}}>{s.label}</div></div>
+        {[{label:"Total answered",value:history.length.toLocaleString(),icon:<Icon name="answered" size={28} bare/>},{label:"Overall accuracy",value:`${ovr}%`,icon:<Icon name="correct" size={28} bare/>},{label:"Current streak",value:`${stats.streak} days`,icon:<Icon name="on-fire-streak" size={28} bare/>},{label:"Total XP",value:stats.xp.toLocaleString(),icon:<Icon name="xp-points" size={28} bare/>}].map(s=>(
+          <div key={s.label} className="ap-card" style={{padding:"18px 16px"}}><div style={{marginBottom:6}}>{s.icon}</div><div style={{fontSize:22,fontWeight:700,color:text(d),fontFamily:"'Space Grotesk',sans-serif"}}>{s.value}</div><div style={{fontSize:12,color:muted(d),marginTop:3}}>{s.label}</div></div>
         ))}
       </div>
       {days.length>0&&(
@@ -1140,7 +1140,7 @@ function ProgressScreen({history,subjects,stats,dark:d,onAIAnalysis,aiLoading}) 
          :ss.filter(s=>s.attempted>0).map(s=>(
           <div key={s.subject_code} style={{marginBottom:16}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}><span>{SUBJECT_ICONS[s.subject_code]||"📚"}</span><span style={{fontSize:13,fontWeight:600,color:text(d)}}>{s.subject_name}</span><span style={{fontSize:11,color:muted(d)}}>{s.attempted} Qs</span></div>
+              <div style={{display:"flex",alignItems:"center",gap:8}}><Icon name={SUBJECT_ICONS[s.subject_code]||"subjects"} size={32} bare /><span style={{fontSize:13,fontWeight:600,color:text(d)}}>{s.subject_name}</span><span style={{fontSize:11,color:muted(d)}}>{s.attempted} Qs</span></div>
               <span style={{fontSize:14,fontWeight:700,color:s.mastery>=75?C.green:s.mastery>=50?C.amber:C.red}}>{s.mastery}%</span>
             </div>
             <div className="progress-bar" style={{height:6}}><div style={{width:`${s.mastery}%`,height:"100%",background:s.mastery>=75?C.green:s.mastery>=50?C.amber:C.red,borderRadius:99,transition:"width 0.8s"}}/></div>
@@ -1192,7 +1192,7 @@ function ProfileScreen({user,licence,stats,dark:d,toggleDark,onLogout}) {
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0"}}>
           <div><div style={{fontSize:14,fontWeight:500,color:text(d)}}>{d?"Dark Mode":"Light Mode"}</div><div style={{fontSize:12,color:muted(d)}}>Switch interface theme</div></div>
           <button onClick={toggleDark} style={{width:44,height:24,borderRadius:12,background:d?C.green:"rgba(0,0,0,0.15)",position:"relative"}}>
-            <div style={{width:18,height:18,borderRadius:"50%",background:"#FFF",position:"absolute",top:3,left:d?23:3,transition:"left 0.2s",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>{d?"🌙":"☀️"}</div>
+            <div style={{width:18,height:18,borderRadius:"50%",background:"#FFF",position:"absolute",top:3,left:d?23:3,transition:"left 0.2s",display:"flex",alignItems:"center",justifyContent:"center"}}><Icon name={d?"light-mode":"dark-mode"} size={14} bare /></div>
           </button>
         </div>
       </div>
