@@ -907,7 +907,7 @@ function HomeScreen({user,licence,stats,subjects,history,dark:d,onSelectSubject,
         <div style={{marginBottom:24}}>
           <h2 style={{fontSize:16,fontWeight:700,color:text(d),marginBottom:12}}>Your Badges</h2>
           <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            {earnedBadges.map(b=><div key={b.id} className="ap-card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:20}}>{b.icon}</span><div><div style={{fontSize:12,fontWeight:600,color:text(d)}}>{b.label}</div><div style={{fontSize:10,color:muted(d)}}>{b.desc}</div></div></div>)}
+            {earnedBadges.map(b=><div key={b.id} className="ap-card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8}}><Icon name={b.icon} size={28} bare /><div><div style={{fontSize:12,fontWeight:600,color:text(d)}}>{b.label}</div><div style={{fontSize:10,color:muted(d)}}>{b.desc}</div></div></div>)}
           </div>
         </div>
       )}
