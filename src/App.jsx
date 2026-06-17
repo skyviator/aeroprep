@@ -53,14 +53,14 @@ function xpForLevel(l) { return l*l*100; }
 function levelFromXP(xp) { let l=1; while(xp>=xpForLevel(l+1)) l++; return l; }
 
 const BADGES = [
-  {id:"first_q",icon:"✈️",label:"First Flight",desc:"Answer your first question",check:s=>s.totalAnswered>=1},
-  {id:"streak_7",icon:"🔥",label:"On Fire",desc:"7-day streak",check:s=>s.streak>=7},
-  {id:"streak_30",icon:"⚡",label:"Unstoppable",desc:"30-day streak",check:s=>s.streak>=30},
-  {id:"correct_100",icon:"🎯",label:"Sharp Shooter",desc:"100 correct answers",check:s=>s.totalCorrect>=100},
-  {id:"correct_500",icon:"🏆",label:"Ace Pilot",desc:"500 correct answers",check:s=>s.totalCorrect>=500},
-  {id:"daily_done",icon:"📅",label:"Daily Challenger",desc:"Complete a daily challenge",check:s=>s.dailyChallengesDone>=1},
-  {id:"mock_pass",icon:"📋",label:"Cleared for Takeoff",desc:"Score 75%+ on a mock exam",check:s=>s.bestMockScore>=75},
-  {id:"subject_master",icon:"🌟",label:"Subject Master",desc:"80% mastery in any subject",check:s=>s.bestSubjectMastery>=80},
+  {id:"first_q",icon:"first-flight",label:"First Flight",desc:"Answer your first question",check:s=>s.totalAnswered>=1},
+  {id:"streak_7",icon:"on-fire-streak",label:"On Fire",desc:"7-day streak",check:s=>s.streak>=7},
+  {id:"streak_30",icon:"xp-points",label:"Unstoppable",desc:"30-day streak",check:s=>s.streak>=30},
+  {id:"correct_100",icon:"sharp-shooter",label:"Sharp Shooter",desc:"100 correct answers",check:s=>s.totalCorrect>=100},
+  {id:"correct_500",icon:"ace-pilot",label:"Ace Pilot",desc:"500 correct answers",check:s=>s.totalCorrect>=500},
+  {id:"daily_done",icon:"daily-challenge",label:"Daily Challenger",desc:"Complete a daily challenge",check:s=>s.dailyChallengesDone>=1},
+  {id:"mock_pass",icon:"cleared-for-t-o",label:"Cleared for Takeoff",desc:"Score 75%+ on a mock exam",check:s=>s.bestMockScore>=75},
+  {id:"subject_master",icon:"subject-master",label:"Subject Master",desc:"80% mastery in any subject",check:s=>s.bestSubjectMastery>=80},
 ];
 
 const C = {
@@ -878,7 +878,7 @@ function HomeScreen({user,licence,stats,subjects,history,dark:d,onSelectSubject,
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
         <div>
           <p style={{fontSize:13,color:muted(d),marginBottom:2}}>{greeting},</p>
-          <h1 style={{fontSize:22,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif",color:text(d)}}>{user.full_name?.split(" ")[0]||"Captain"} 👋</h1>
+          <h1 style={{fontSize:22,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif",color:text(d)}}>{user.full_name?.split(" ")[0]||"Captain"}</h1>
           <p style={{fontSize:12,color:muted(d),marginTop:2}}>{LICENCE_LABELS[licence.licence_type]} · Expires {new Date(licence.valid_until).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</p>
         </div>
         <StreakFlame count={stats.streak} dark={d}/>
@@ -1184,7 +1184,7 @@ function ProfileScreen({user,licence,stats,dark:d,toggleDark,onLogout}) {
       <div className="ap-card" style={{padding:20,marginBottom:20}}>
         <h3 style={{fontSize:15,fontWeight:700,color:text(d),marginBottom:14}}>Badges ({BADGES.filter(b=>b.check(stats)).length}/{BADGES.length})</h3>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10}}>
-          {BADGES.map(b=>{const earned=b.check(stats);return <div key={b.id} style={{textAlign:"center",opacity:earned?1:0.35}}><div style={{fontSize:28,marginBottom:4}}>{b.icon}</div><div style={{fontSize:10,color:earned?text(d):muted(d),fontWeight:earned?600:400,lineHeight:1.2}}>{b.label}</div></div>;})}
+          {BADGES.map(b=>{const earned=b.check(stats);return <div key={b.id} style={{textAlign:"center",opacity:earned?1:0.35}}><div style={{marginBottom:4}}><Icon name={b.icon} size={30} bare /></div><div style={{fontSize:10,color:earned?text(d):muted(d),fontWeight:earned?600:400,lineHeight:1.2}}>{b.label}</div></div>;})}
         </div>
       </div>
       <div className="ap-card" style={{padding:20,marginBottom:20}}>
