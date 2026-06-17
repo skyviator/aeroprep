@@ -605,6 +605,65 @@ function AdminAdmins({currentAdmin,dark:d}) {
   );
 }
 
+function AdminReports({dark:d}) {
+  const [reports,setReports]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [filter,setFilter]=useState("open");
+  const [busy,setBusy]=useState(null);
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    try{const r=await adminAction("reports.list");if(r.success)setReports(r.data||[]);}catch(e){console.error(e);}
+    setLoading(false);
+  }
+  async function setStatus(id,status){
+    setBusy(id);
+    try{await adminAction("reports.set_status",{id,status});
+      setReports(rs=>rs.map(x=>x.id===id?{...x,status}:x));}catch(e){console.error(e);}
+    setBusy(null);
+  }
+  const filtered=filter==="all"?reports:reports.filter(r=>r.status===filter);
+  const counts={open:reports.filter(r=>r.status==="open").length,reviewed:reports.filter(r=>r.status==="reviewed").length,resolved:reports.filter(r=>r.status==="resolved").length};
+  const sc=s=>s==="open"?C.red:s==="reviewed"?C.blue:C.green;
+  return (
+    <div style={{maxWidth:900,margin:"0 auto"}}>
+      <h2 style={{fontSize:22,fontWeight:700,color:text(d),marginBottom:4}}>Question Reports</h2>
+      <p style={{fontSize:13,color:muted(d),marginBottom:20}}>Student-submitted problems with questions.</p>
+      <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+        {["open","reviewed","resolved","all"].map(f=>(
+          <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",textTransform:"capitalize",border:`1px solid ${filter===f?C.green:border(d)}`,background:filter===f?(d?"rgba(0,212,106,0.15)":"rgba(0,212,106,0.08)"):card(d),color:filter===f?C.green:muted(d)}}>{f}{f!=="all"?` (${counts[f]||0})`:""}</button>
+        ))}
+      </div>
+      {loading?<p style={{color:muted(d),fontSize:14}}>Loading…</p>:
+       filtered.length===0?<p style={{color:muted(d),fontSize:14}}>No {filter==="all"?"":filter+" "}reports.</p>:
+       filtered.map(r=>{const q=r.questions||{};const u=r.users||{};return (
+         <div key={r.id} className="ap-card" style={{padding:"18px 20px",marginBottom:14}}>
+           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:10,flexWrap:"wrap"}}>
+             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+               <span className="tag tag-blue">{q.subject_code||"—"}</span>
+               {q.q_number&&<span className="tag" style={{background:d?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",color:muted(d)}}>Q{q.q_number}</span>}
+               <span className="tag" style={{background:"transparent",border:`1px solid ${sc(r.status)}`,color:sc(r.status),textTransform:"capitalize"}}>{r.status}</span>
+               {q.needs_review&&<span className="tag" style={{background:"transparent",border:`1px solid ${C.red}`,color:C.red}}>flagged</span>}
+             </div>
+             <span style={{fontSize:12,color:muted(d)}}>{new Date(r.created_at).toLocaleString()}</span>
+           </div>
+           <p style={{fontSize:14,fontWeight:500,color:text(d),lineHeight:1.5,marginBottom:8}}>{q.question||"(question deleted)"}</p>
+           {q.correct_answer&&<p style={{fontSize:12,color:muted(d),marginBottom:10}}>Correct answer: <strong style={{color:C.green}}>{q.correct_answer}</strong></p>}
+           <div style={{padding:"10px 14px",borderRadius:8,background:d?"rgba(0,0,0,0.2)":"rgba(0,0,0,0.04)",marginBottom:12}}>
+             <p style={{fontSize:13,color:text(d),margin:0,lineHeight:1.5}}>{r.comment||<em style={{color:muted(d)}}>No comment provided</em>}</p>
+             <p style={{fontSize:11,color:muted(d),margin:"6px 0 0"}}>Reported by {u.email||"unknown"}</p>
+           </div>
+           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+             {r.status!=="reviewed"&&<button onClick={()=>setStatus(r.id,"reviewed")} disabled={busy===r.id} style={{padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${C.blue}`,background:"transparent",color:C.blue,opacity:busy===r.id?0.5:1}}>Mark reviewed</button>}
+             {r.status!=="resolved"&&<button onClick={()=>setStatus(r.id,"resolved")} disabled={busy===r.id} className="ap-btn-primary" style={{padding:"8px 14px",fontSize:13,opacity:busy===r.id?0.5:1}}>Mark resolved</button>}
+             {r.status!=="open"&&<button onClick={()=>setStatus(r.id,"open")} disabled={busy===r.id} style={{padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${border(d)}`,background:"transparent",color:muted(d),opacity:busy===r.id?0.5:1}}>Reopen</button>}
+           </div>
+         </div>
+       );})}
+    </div>
+  );
+}
+
 function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
   const [tab,setTab]=useState("dashboard");
   const [stats,setStats]=useState({});
@@ -635,7 +694,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
     }catch(e){console.error(e);}
   }
 
-  const TABS=[{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"keys",icon:"🔑",label:"Licence Keys"},{id:"students",icon:"👥",label:"Students"},{id:"security",icon:"🛡️",label:"Security"},{id:"admins",icon:"👤",label:"Admins"}];
+  const TABS=[{id:"dashboard",icon:"📊",label:"Dashboard"},{id:"keys",icon:"🔑",label:"Licence Keys"},{id:"students",icon:"👥",label:"Students"},{id:"reports",icon:"🚩",label:"Reports"},{id:"security",icon:"🛡️",label:"Security"},{id:"admins",icon:"👤",label:"Admins"}];
 
   return (
     <div style={{minHeight:"100vh",background:bg(d),display:"flex",flexDirection:"column"}}>
@@ -662,6 +721,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
           {tab==="dashboard"&&<AdminDashboard stats={stats} dark={d}/>}
           {tab==="keys"&&<AdminKeys dark={d}/>}
           {tab==="students"&&<AdminStudents dark={d}/>}
+          {tab==="reports"&&<AdminReports dark={d}/>}
           {tab==="security"&&<AdminSecurity dark={d}/>}
           {tab==="admins"&&<AdminAdmins currentAdmin={admin} dark={d}/>}
         </div>
