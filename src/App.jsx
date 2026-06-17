@@ -923,9 +923,11 @@ function QuizScreen({questions,config,dark:d,onComplete,userId}) {
   async function submitReport(){
     setReportStatus("sending");
     try{
-      await sbFetch("question_reports",{method:"POST",body:JSON.stringify({
-        question_id:q.id, user_id:userId||null, comment:reportText.trim()||null
-      })});
+      await sbFetch("question_reports",{method:"POST",
+        headers:{Prefer:"return=minimal"},
+        body:JSON.stringify({
+          question_id:q.id, user_id:userId||null, comment:reportText.trim()||null
+        })});
       setReportStatus("done"); setReportText("");
       setTimeout(()=>{setReportOpen(false);setReportStatus("");},1500);
     }catch(e){setReportStatus("error");}
