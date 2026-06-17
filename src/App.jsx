@@ -826,7 +826,7 @@ function LoginScreen({onLogin,onAdminLogin,dark:d}) {
               <label style={{display:"block",fontSize:13,fontWeight:500,color:muted(d),marginBottom:6}}>Password</label>
               <div style={{position:"relative"}}>
                 <input className="ap-input" type={showPass?"text":"password"} placeholder="••••••••" value={password} onChange={e=>setPassword(e.target.value)} required style={{paddingRight:44}}/>
-                <button type="button" onClick={()=>setShowPass(!showPass)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",color:muted(d),fontSize:18}}>{showPass?"🙈":"👁️"}</button>
+                <button type="button" onClick={()=>setShowPass(!showPass)} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",color:muted(d),fontSize:18}}><Icon name={showPass?"eye-off":"eye"} size={20} bare /></button>
               </div>
             </div>
             {mode==="activate"&&(
@@ -1220,7 +1220,10 @@ function SubjectsScreen({subjects,history,dark:d,onSelectSubject}) {
   return (
     <div style={{padding:"20px 20px 100px",maxWidth:800,margin:"0 auto"}}>
       <h1 style={{fontSize:22,fontWeight:700,fontFamily:"'Space Grotesk',sans-serif",color:text(d),marginBottom:16}}>All Subjects</h1>
-      <input className="ap-input" placeholder="🔍 Search subjects…" value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:20}}/>
+      <div style={{position:"relative",marginBottom:20}}>
+        <Icon name="search" size={18} bare style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",pointerEvents:"none"}} />
+        <input className="ap-input" placeholder="Search subjects…" value={search} onChange={e=>setSearch(e.target.value)} style={{paddingLeft:38}}/>
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:14}}>
         {filtered.map(s=>{const sh=history.filter(h=>h.subject_code===s.subject_code);const m=sh.length>0?Math.round((sh.filter(h=>h.is_correct).length/sh.length)*100):0;return <SubjectCard key={s.subject_code} subject={s} mastery={m} dark={d} onClick={()=>onSelectSubject(s)}/>;})}
       </div>
