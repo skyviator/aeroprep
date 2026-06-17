@@ -930,7 +930,7 @@ function QuizScreen({questions,config,dark:d,onComplete,userId}) {
         })});
       setReportStatus("done"); setReportText("");
       setTimeout(()=>{setReportOpen(false);setReportStatus("");},1500);
-    }catch(e){setReportStatus("error");}
+    }catch(e){setReportStatus("error");alert("DEBUG: "+e.message);}
   }
   useEffect(()=>{
     if(config.timed&&timeLeft>0){timerRef.current=setInterval(()=>setTimeLeft(t=>{if(t<=1){clearInterval(timerRef.current);onComplete(answers);return 0;}return t-1;}),1000);}
