@@ -622,6 +622,12 @@ function AdminReports({dark:d}) {
       setReports(rs=>rs.map(x=>x.id===id?{...x,status}:x));}catch(e){console.error(e);}
     setBusy(null);
   }
+  async function setReview(r,needs_review){
+    setBusy(r.id);
+    try{await adminAction("questions.set_review",{id:r.question_id,needs_review});
+      setReports(rs=>rs.map(x=>x.question_id===r.question_id?{...x,questions:{...x.questions,needs_review}}:x));}catch(e){console.error(e);}
+    setBusy(null);
+  }
   const filtered=filter==="all"?reports:reports.filter(r=>r.status===filter);
   const counts={open:reports.filter(r=>r.status==="open").length,reviewed:reports.filter(r=>r.status==="reviewed").length,resolved:reports.filter(r=>r.status==="resolved").length};
   const sc=s=>s==="open"?C.red:s==="reviewed"?C.blue:C.green;
@@ -654,6 +660,9 @@ function AdminReports({dark:d}) {
              <p style={{fontSize:11,color:muted(d),margin:"6px 0 0"}}>Reported by {u.email||"unknown"}</p>
            </div>
            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+             {q.needs_review
+               ? <button onClick={()=>setReview(r,false)} disabled={busy===r.id} style={{padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${C.green}`,background:"transparent",color:C.green,opacity:busy===r.id?0.5:1}}>Unhide question</button>
+               : <button onClick={()=>setReview(r,true)} disabled={busy===r.id} style={{padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${C.red}`,background:"transparent",color:C.red,opacity:busy===r.id?0.5:1}}>Hide question</button>}
              {r.status!=="reviewed"&&<button onClick={()=>setStatus(r.id,"reviewed")} disabled={busy===r.id} style={{padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${C.blue}`,background:"transparent",color:C.blue,opacity:busy===r.id?0.5:1}}>Mark reviewed</button>}
              {r.status!=="resolved"&&<button onClick={()=>setStatus(r.id,"resolved")} disabled={busy===r.id} className="ap-btn-primary" style={{padding:"8px 14px",fontSize:13,opacity:busy===r.id?0.5:1}}>Mark resolved</button>}
              {r.status!=="open"&&<button onClick={()=>setStatus(r.id,"open")} disabled={busy===r.id} style={{padding:"8px 14px",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${border(d)}`,background:"transparent",color:muted(d),opacity:busy===r.id?0.5:1}}>Reopen</button>}
