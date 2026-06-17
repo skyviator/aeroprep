@@ -674,6 +674,78 @@ function AdminReports({dark:d}) {
   );
 }
 
+function AdminFigures({dark:d}) {
+  const [figures,setFigures]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [subject,setSubject]=useState("");
+  const [num,setNum]=useState("");
+  const [caption,setCaption]=useState("");
+  const [file,setFile]=useState(null);
+  const [busy,setBusy]=useState(false);
+  const [msg,setMsg]=useState("");
+  useEffect(()=>{load();},[]);
+  async function load(){
+    setLoading(true);
+    try{const r=await adminAction("figures.list");if(r.success)setFigures(r.data||[]);}catch(e){console.error(e);}
+    setLoading(false);
+  }
+  function pickFile(e){
+    const f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    if(f.size>4*1024*1024){setMsg("Image is over 4MB — please compress it first.");return;}
+    const reader=new FileReader();
+    reader.onload=()=>setFile({base64:reader.result,type:f.type,preview:reader.result});
+    reader.readAsDataURL(f);
+  }
+  async function upload(){
+    if(!subject.trim()||num===""||!file){setMsg("Subject, figure number, and an image are all required.");return;}
+    setBusy(true);setMsg("");
+    try{
+      const r=await adminAction("figures.create",{subject_code:subject.trim(),figure_number:parseInt(num),file_base64:file.base64,content_type:file.type,caption:caption.trim()||null});
+      if(r.success){setMsg("Uploaded.");setNum("");setCaption("");setFile(null);await load();}
+      else setMsg(r.error||"Upload failed.");
+    }catch(e){setMsg("Upload failed.");}
+    setBusy(false);
+  }
+  async function del(id){
+    if(!window.confirm("Delete this figure? Questions using it will lose the image."))return;
+    setBusy(true);
+    try{await adminAction("figures.delete",{id});await load();}catch(e){console.error(e);}
+    setBusy(false);
+  }
+  const inp={width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${border(d)}`,background:d?"rgba(0,0,0,0.2)":"#fff",color:text(d),fontSize:13,boxSizing:"border-box"};
+  return (
+    <div style={{maxWidth:900,margin:"0 auto"}}>
+      <h2 style={{fontSize:22,fontWeight:700,color:text(d),marginBottom:4}}>Figures</h2>
+      <p style={{fontSize:13,color:muted(d),marginBottom:20}}>Upload reference images. A student sees the image on any question whose figure number matches (same subject).</p>
+      <div className="ap-card" style={{padding:20,marginBottom:24}}>
+        <h3 style={{fontSize:14,fontWeight:600,color:text(d),marginBottom:14}}>Upload a figure</h3>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>
+          <div style={{flex:"1 1 120px"}}><label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Subject code</label><input style={inp} value={subject} onChange={e=>setSubject(e.target.value)} placeholder="022"/></div>
+          <div style={{flex:"1 1 120px"}}><label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Figure number</label><input style={inp} type="number" value={num} onChange={e=>setNum(e.target.value)} placeholder="12"/></div>
+        </div>
+        <div style={{marginBottom:12}}><label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Caption (optional)</label><input style={inp} value={caption} onChange={e=>setCaption(e.target.value)} placeholder="e.g. Altimeter diagram"/></div>
+        <div style={{marginBottom:12}}><input type="file" accept="image/*" onChange={pickFile} style={{fontSize:13,color:text(d)}}/></div>
+        {file&&<img src={file.preview} alt="preview" style={{maxWidth:200,maxHeight:160,borderRadius:8,border:`1px solid ${border(d)}`,marginBottom:12,display:"block"}}/>}
+        {msg&&<p style={{fontSize:13,color:msg==="Uploaded."?C.green:C.red,margin:"0 0 12px"}}>{msg}</p>}
+        <button onClick={upload} disabled={busy} className="ap-btn-primary" style={{padding:"10px 18px",fontSize:13,opacity:busy?0.6:1}}>{busy?"Working…":"Upload figure"}</button>
+      </div>
+      {loading?<p style={{color:muted(d),fontSize:14}}>Loading…</p>:
+       figures.length===0?<p style={{color:muted(d),fontSize:14}}>No figures uploaded yet.</p>:
+       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14}}>
+         {figures.map(f=>(
+           <div key={f.id} className="ap-card" style={{padding:12}}>
+             {f.url?<img src={f.url} alt={`Figure ${f.figure_number}`} style={{width:"100%",height:140,objectFit:"contain",borderRadius:6,background:d?"rgba(0,0,0,0.2)":"rgba(0,0,0,0.04)",marginBottom:8}}/>:<div style={{height:140,display:"flex",alignItems:"center",justifyContent:"center",color:muted(d),fontSize:12}}>No preview</div>}
+             <div style={{fontSize:13,fontWeight:600,color:text(d)}}>{f.subject_code} · Figure {f.figure_number}</div>
+             {f.caption&&<div style={{fontSize:12,color:muted(d),marginTop:2}}>{f.caption}</div>}
+             <button onClick={()=>del(f.id)} disabled={busy} style={{marginTop:10,padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",border:`1px solid ${C.red}`,background:"transparent",color:C.red,opacity:busy?0.5:1}}>Delete</button>
+           </div>
+         ))}
+       </div>}
+    </div>
+  );
+}
+
 function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
   const [tab,setTab]=useState("dashboard");
   const [stats,setStats]=useState({});
@@ -705,7 +777,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
     }catch(e){console.error(e);}
   }
 
-  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
+  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"figures",icon:"subjects",label:"Figures"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
 
   return (
     <div style={{minHeight:"100vh",background:bg(d),display:"flex",flexDirection:"column"}}>
@@ -733,6 +805,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
           {tab==="keys"&&<AdminKeys dark={d}/>}
           {tab==="students"&&<AdminStudents dark={d}/>}
           {tab==="reports"&&<AdminReports dark={d}/>}
+          {tab==="figures"&&<AdminFigures dark={d}/>}
           {tab==="security"&&<AdminSecurity dark={d}/>}
           {tab==="admins"&&<AdminAdmins currentAdmin={admin} dark={d}/>}
         </div>
