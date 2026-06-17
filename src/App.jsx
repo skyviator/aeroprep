@@ -1012,7 +1012,7 @@ function QuizScreen({questions,config,dark:d,onComplete,userId}) {
   function sel(opt){if(revealed&&isPractice)return;setSelected(opt);if(isPractice)setRevealed(true);}
   function next(){
     const ic=selected===q.correct_answer;
-    const na=[...answers,{question_id:q.id,q_number:q.q_number,subject_code:q.subject_code,subtopic_name:q.subtopic_name,selected_answer:selected,is_correct:ic}];
+    const na=[...answers,{question_id:q.id,q_number:q.q_number,subject_code:q.subject_code,subtopic_name:q.subtopic_name,selected_answer:selected,is_correct:ic,question:q.question,option_a:q.option_a,option_b:q.option_b,option_c:q.option_c,option_d:q.option_d,correct_answer:q.correct_answer}];
     setAnswers(na);
     if(idx+1>=questions.length)onComplete(na);
     else{setIdx(idx+1);setSelected(null);setRevealed(false);setReportOpen(false);setReportText("");setReportStatus("");}
@@ -1061,6 +1061,7 @@ function QuizScreen({questions,config,dark:d,onComplete,userId}) {
 }
 
 function ResultsScreen({answers,dark:d,onRetry,onHome,xpEarned}) {
+  const [showReview,setShowReview]=useState(false);
   const total=answers.length,correct=answers.filter(a=>a.is_correct).length,pct=total>0?Math.round((correct/total)*100):0,passed=pct>=75;
   const bySubtopic={};
   answers.forEach(a=>{if(!bySubtopic[a.subtopic_name])bySubtopic[a.subtopic_name]={correct:0,total:0};bySubtopic[a.subtopic_name].total++;if(a.is_correct)bySubtopic[a.subtopic_name].correct++;});
@@ -1076,6 +1077,27 @@ function ResultsScreen({answers,dark:d,onRetry,onHome,xpEarned}) {
       <div className="ap-card" style={{padding:20,marginBottom:20}}>
         <h3 style={{fontSize:15,fontWeight:700,color:text(d),marginBottom:16}}>Subtopic Breakdown</h3>
         {Object.entries(bySubtopic).map(([name,data])=>{const p=Math.round((data.correct/data.total)*100);return <div key={name} style={{marginBottom:14}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={{fontSize:13,color:text(d)}}>{name}</span><span style={{fontSize:13,fontWeight:700,color:p>=75?C.green:p>=50?C.amber:C.red}}>{p}%</span></div><div className="progress-bar" style={{height:6}}><div style={{width:`${p}%`,height:"100%",background:p>=75?C.green:p>=50?C.amber:C.red,borderRadius:99}}/></div></div>;})}
+      </div>
+      <div className="ap-card" style={{padding:20,marginBottom:20}}>
+        <button onClick={()=>setShowReview(s=>!s)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:"none",border:"none",cursor:"pointer",padding:0}}>
+          <h3 style={{fontSize:15,fontWeight:700,color:text(d),margin:0}}>Review Answers ({correct}/{total})</h3>
+          <span style={{fontSize:13,color:muted(d)}}>{showReview?"Hide":"Show"}</span>
+        </button>
+        {showReview&&<div style={{marginTop:16}}>
+          {answers.map((a,i)=>{
+            const opts={A:a.option_a,B:a.option_b,C:a.option_c,D:a.option_d};
+            return <div key={i} style={{paddingBottom:16,marginBottom:16,borderBottom:i<answers.length-1?`1px solid ${border(d)}`:"none"}}>
+              <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"flex-start"}}>
+                <span style={{fontSize:13,fontWeight:700,color:a.is_correct?C.green:C.red,flexShrink:0}}>{i+1}.</span>
+                <p style={{fontSize:14,color:text(d),margin:0,lineHeight:1.5,fontWeight:500}}>{a.question}</p>
+              </div>
+              <div style={{paddingLeft:22}}>
+                <p style={{fontSize:13,margin:"0 0 4px",color:a.is_correct?C.green:C.red}}>Your answer: {a.selected_answer?`${a.selected_answer}. ${opts[a.selected_answer]}`:"Not answered"} {a.is_correct?"✓":"✗"}</p>
+                {!a.is_correct&&<p style={{fontSize:13,margin:0,color:C.green}}>Correct answer: {a.correct_answer}. {opts[a.correct_answer]}</p>}
+              </div>
+            </div>;
+          })}
+        </div>}
       </div>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <button className="ap-btn-primary" style={{padding:"16px"}} onClick={onRetry}>Try Again ↻</button>
