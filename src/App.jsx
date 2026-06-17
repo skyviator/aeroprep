@@ -5,8 +5,10 @@ const SB_KEY = "sb_publishable_336LVuv08rcJtp86WswWFQ_rugDbPWT";
 
 async function sbFetch(path, opts = {}) {
   const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
-    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, "Content-Type": "application/json", Prefer: "return=representation", ...opts.headers },
     ...opts,
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+      "Content-Type": "application/json", Prefer: "return=representation",
+      ...opts.headers },
   });
   if (!res.ok) throw new Error(await res.text());
   const text = await res.text();
@@ -930,7 +932,7 @@ function QuizScreen({questions,config,dark:d,onComplete,userId}) {
         })});
       setReportStatus("done"); setReportText("");
       setTimeout(()=>{setReportOpen(false);setReportStatus("");},1500);
-    }catch(e){setReportStatus("error");alert("DEBUG: "+e.message);}
+    }catch(e){setReportStatus("error");}
   }
   useEffect(()=>{
     if(config.timed&&timeLeft>0){timerRef.current=setInterval(()=>setTimeLeft(t=>{if(t<=1){clearInterval(timerRef.current);onComplete(answers);return 0;}return t-1;}),1000);}
