@@ -1256,7 +1256,7 @@ export default function App() {
     setLoading(true);
     try{
       const licCols=LICENCE_COLS[lic.licence_type]||["applicable_all"];
-      const raw=await sbFetch(`questions?select=subject_code,subject_name&${licCols[0]}=eq.true&limit=1000`);
+      const raw=await sbFetch(`questions?select=subject_code,subject_name&${licCols[0]}=eq.true&needs_review=eq.false&limit=1000`);
       const sm={};
       raw.forEach(q=>{if(!sm[q.subject_code])sm[q.subject_code]={subject_code:q.subject_code,subject_name:q.subject_name,total:0};sm[q.subject_code].total++;});
       setSubjects(Object.values(sm).sort((a,b)=>a.subject_code.localeCompare(b.subject_code)));
@@ -1291,11 +1291,11 @@ export default function App() {
     setLoading(true);
     try{
       const licCols=LICENCE_COLS[licence.licence_type]||["applicable_all"];
-      let url=`questions?subject_code=eq.${subject.subject_code}&${licCols[0]}=eq.true&limit=500`;
+      let url=`questions?subject_code=eq.${subject.subject_code}&${licCols[0]}=eq.true&needs_review=eq.false&limit=500`;
       if(cfg.mode==="weak"){
         const wids=history.filter(h=>!h.is_correct&&h.subject_code===subject.subject_code).map(h=>h.question_id);
         if(!wids.length){alert("No weak areas found yet! Practice first.");setLoading(false);return;}
-        url=`questions?id=in.(${[...new Set(wids)].slice(0,100).join(",")})&limit=100`;
+        url=`questions?id=in.(${[...new Set(wids)].slice(0,100).join(",")})&needs_review=eq.false&limit=100`;
       }
       let qs=await sbFetch(url);
       qs=qs.sort(()=>Math.random()-0.5).slice(0,cfg.qCount);
@@ -1308,7 +1308,7 @@ export default function App() {
     setLoading(true);
     try{
       const licCols=LICENCE_COLS[licence.licence_type]||["applicable_all"];
-      const qs=await sbFetch(`questions?${licCols[0]}=eq.true&limit=500`);
+      const qs=await sbFetch(`questions?${licCols[0]}=eq.true&needs_review=eq.false&limit=500`);
       setQuizQuestions(qs.sort(()=>Math.random()-0.5).slice(0,10));
       setQuizConfig({mode:"timed_sprint",qCount:10,timed:true,minutes:10,subjectCode:"daily",isDaily:true});
       setScreen("quiz");
