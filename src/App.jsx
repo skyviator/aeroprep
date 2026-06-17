@@ -885,7 +885,7 @@ function HomeScreen({user,licence,stats,subjects,history,dark:d,onSelectSubject,
       </div>
       <div className="ap-card" style={{padding:16,marginBottom:20}}><XPBar xp={stats.xp} dark={d}/></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}}>
-        {[{label:"Answered",value:stats.totalAnswered.toLocaleString(),icon:<Icon name="answered" size={30} bare/>},{label:"Correct",value:`${stats.totalAnswered>0?Math.round((stats.totalCorrect/stats.totalAnswered)*100):0}%`,icon:<Icon name="sharp-shooter" size={30} bare/>},{label:"Subjects",value:`${subjects.length}`,icon:<Icon name="subjects" size={30} bare/>}].map(s=>(
+        {[{label:"Answered",value:stats.totalAnswered.toLocaleString(),icon:<Icon name="answered" size={30} bare/>},{label:"Correct",value:`${stats.totalAnswered>0?Math.round((stats.totalCorrect/stats.totalAnswered)*100):0}%`,icon:<Icon name="correct" size={30} bare/>},{label:"Subjects",value:`${subjects.length}`,icon:<Icon name="subjects" size={30} bare/>}].map(s=>(
           <div key={s.label} className="ap-card" style={{padding:"14px 12px",textAlign:"center"}}>
             <div style={{marginBottom:4}}>{s.icon}</div>
             <div style={{fontSize:20,fontWeight:700,color:text(d),fontFamily:"'Space Grotesk',sans-serif"}}>{s.value}</div>
@@ -935,10 +935,10 @@ function ExamPickerScreen({subject,dark:d,onStart,onBack}) {
   const [timed,setTimed]=useState(false);
   const [minutes,setMinutes]=useState(30);
   const MODES=[
-    {id:"practice",icon:"📖",label:"Practice Mode",desc:"Instant feedback after each question",tag:"Recommended",tc:"tag-green"},
-    {id:"mock",icon:"📋",label:"Mock Exam",desc:"Exam conditions — results at the end",tag:"Exam Sim",tc:"tag-blue"},
-    {id:"weak",icon:"🎯",label:"Weak Areas",desc:"Focus on questions you got wrong",tag:"Targeted",tc:"tag-amber"},
-    {id:"timed_sprint",icon:"⚡",label:"Timed Sprint",desc:"Race the clock for bonus XP",tag:"+2x XP",tc:"tag-red"},
+    {id:"practice",icon:"practice-mode",label:"Practice Mode",desc:"Instant feedback after each question",tag:"Recommended",tc:"tag-green"},
+    {id:"mock",icon:"mock-exam",label:"Mock Exam",desc:"Exam conditions — results at the end",tag:"Exam Sim",tc:"tag-blue"},
+    {id:"weak",icon:"weak-areas",label:"Weak Areas",desc:"Focus on questions you got wrong",tag:"Targeted",tc:"tag-amber"},
+    {id:"timed_sprint",icon:"timed-sprint",label:"Timed Sprint",desc:"Race the clock for bonus XP",tag:"+2x XP",tc:"tag-red"},
   ];
   return (
     <div style={{padding:"20px 20px 100px",maxWidth:600,margin:"0 auto"}}>
@@ -951,7 +951,7 @@ function ExamPickerScreen({subject,dark:d,onStart,onBack}) {
         {MODES.map(m=>(
           <div key={m.id} className="ap-card ap-card-hover" onClick={()=>setMode(m.id)} style={{padding:"18px 20px",cursor:"pointer",border:mode===m.id?`1px solid ${C.green}`:`1px solid ${border(d)}`}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div style={{display:"flex",gap:14}}><span style={{fontSize:24}}>{m.icon}</span><div><div style={{fontSize:15,fontWeight:600,color:text(d),marginBottom:3}}>{m.label}</div><div style={{fontSize:13,color:muted(d)}}>{m.desc}</div></div></div>
+              <div style={{display:"flex",gap:14}}><Icon name={m.icon} size={36} bare /><div><div style={{fontSize:15,fontWeight:600,color:text(d),marginBottom:3}}>{m.label}</div><div style={{fontSize:13,color:muted(d)}}>{m.desc}</div></div></div>
               <span className={`tag ${m.tc}`}>{m.tag}</span>
             </div>
           </div>
@@ -977,7 +977,7 @@ function ExamPickerScreen({subject,dark:d,onStart,onBack}) {
           {timed&&<div style={{marginTop:16}}><label style={{fontSize:13,color:muted(d),display:"block",marginBottom:8}}>Time limit: {minutes} minutes</label><input type="range" min="5" max="120" step="5" value={minutes} onChange={e=>setMinutes(+e.target.value)} style={{width:"100%",accentColor:C.green}}/></div>}
         </div>
       )}
-      {mode&&<button className="ap-btn-primary" style={{width:"100%",fontSize:16,padding:"16px"}} onClick={()=>onStart({mode,qCount,timed,minutes})}>Start {MODES.find(m2=>m2.id===mode)?.label} ✈️</button>}
+      {mode&&<button className="ap-btn-primary" style={{width:"100%",fontSize:16,padding:"16px"}} onClick={()=>onStart({mode,qCount,timed,minutes})}>Start {MODES.find(m2=>m2.id===mode)?.label}</button>}
     </div>
   );
 }
@@ -1069,11 +1069,11 @@ function ResultsScreen({answers,dark:d,onRetry,onHome,xpEarned}) {
   return (
     <div style={{padding:"20px 20px 100px",maxWidth:600,margin:"0 auto"}}>
       <div className="fade-in" style={{textAlign:"center",marginBottom:32}}>
-        <div style={{fontSize:56,marginBottom:12}}>{pct>=90?"🏆":pct>=75?"✅":pct>=50?"📈":"📚"}</div>
+        <div style={{marginBottom:12}}><Icon name={pct>=90?"ace-pilot":pct>=75?"correct":pct>=50?"climbing":"subjects"} size={64} bare /></div>
         <div style={{fontSize:48,fontWeight:800,fontFamily:"'Space Grotesk',sans-serif",color:passed?C.green:C.amber}}>{pct}%</div>
         <div style={{fontSize:18,fontWeight:600,color:text(d),marginTop:4}}>{passed?"Well done! You passed.":"Keep practising — you will get there."}</div>
         <div style={{fontSize:14,color:muted(d),marginTop:6}}>{correct} correct out of {total}</div>
-        <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:12,background:"rgba(0,212,106,0.12)",borderRadius:10,padding:"6px 16px"}}><span>⚡</span><span style={{fontWeight:700,color:C.green}}>+{xpEarned} XP earned</span></div>
+        <div style={{display:"inline-flex",alignItems:"center",gap:6,marginTop:12,background:"rgba(0,212,106,0.12)",borderRadius:10,padding:"6px 16px"}}><Icon name="xp-points" size={16} bare /><span style={{fontWeight:700,color:C.green}}>+{xpEarned} XP earned</span></div>
       </div>
       <div className="ap-card" style={{padding:20,marginBottom:20}}>
         <h3 style={{fontSize:15,fontWeight:700,color:text(d),marginBottom:16}}>Subtopic Breakdown</h3>
