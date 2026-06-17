@@ -681,11 +681,12 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
 
   async function loadStats(){
     try{
-      const [users,keys,questions]=await Promise.all([
-        sbFetch("users?select=id,is_suspended"),
-        sbFetch("licence_keys?select=*"),
+      const [sres,questions]=await Promise.all([
+        adminAction("students.list"),
         sbFetch("questions?select=subject_code,air_atpl,air_cpl,air_ppl,heli_atpl,heli_cpl,heli_ppl,applicable_all"),
       ]);
+      const users=sres?.data?.users||[];
+      const keys=sres?.data?.keys||[];
       const now=new Date();
       const qbl={};
       Object.keys(LICENCE_COLS).forEach(lic=>{ qbl[lic]=questions.filter(q=>q[lic]||q.applicable_all).length; });
