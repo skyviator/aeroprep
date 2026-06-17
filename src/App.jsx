@@ -1205,10 +1205,11 @@ function ProfileScreen({user,licence,stats,dark:d,toggleDark,onLogout}) {
 }
 
 function BottomNav({screen,onNav,dark:d}) {
-  const items=[{id:"home",icon:<Icon name="home" size={22} bare style={{verticalAlign:"middle"}} />,label:"Home"},{id:"subjects",icon:"📚",label:"Subjects"},{id:"progress",icon:"📊",label:"Progress"},{id:"profile",icon:"👤",label:"Profile"}];
+  const items=[{id:"home",name:"home"},{id:"subjects",name:"subjects"},{id:"progress",name:"progress"},{id:"profile",name:"profile"}];
+  const labels={home:"Home",subjects:"Subjects",progress:"Progress",profile:"Profile"};
   return (
     <div style={{position:"fixed",bottom:0,left:0,right:0,background:card(d),borderTop:`1px solid ${border(d)}`,display:"flex",justifyContent:"space-around",padding:"8px 0 max(8px,env(safe-area-inset-bottom))",zIndex:100,backdropFilter:"blur(10px)"}}>
-      {items.map(item=><button key={item.id} className={`nav-btn ${screen===item.id?"active":""}`} onClick={()=>onNav(item.id)}><span style={{fontSize:22}}>{item.icon}</span><span style={{fontSize:11}}>{item.label}</span></button>)}
+      {items.map(item=><button key={item.id} className={`nav-btn ${screen===item.id?"active":""}`} onClick={()=>onNav(item.id)}><Icon name={item.name} size={24} bare style={{opacity:screen===item.id?1:0.5}}/><span style={{fontSize:11}}>{labels[item.id]}</span></button>)}
     </div>
   );
 }
