@@ -158,7 +158,7 @@ function Logo({size=32}) {
 function StreakFlame({count,dark:d}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:6,background:"rgba(245,158,11,0.12)",borderRadius:10,padding:"6px 12px"}}>
-      <span style={{fontSize:18}}>🔥</span>
+      <Icon name="on-fire-streak" size={18} bare />
       <span style={{fontWeight:700,color:C.amber,fontSize:15}}>{count}</span>
       <span style={{fontSize:12,color:muted(d)}}>day streak</span>
     </div>
@@ -885,9 +885,9 @@ function HomeScreen({user,licence,stats,subjects,history,dark:d,onSelectSubject,
       </div>
       <div className="ap-card" style={{padding:16,marginBottom:20}}><XPBar xp={stats.xp} dark={d}/></div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:24}}>
-        {[{label:"Answered",value:stats.totalAnswered.toLocaleString(),icon:"📝"},{label:"Correct",value:`${stats.totalAnswered>0?Math.round((stats.totalCorrect/stats.totalAnswered)*100):0}%`,icon:"🎯"},{label:"Subjects",value:`${subjects.length}`,icon:"📚"}].map(s=>(
+        {[{label:"Answered",value:stats.totalAnswered.toLocaleString(),icon:<Icon name="answered" size={30} bare/>},{label:"Correct",value:`${stats.totalAnswered>0?Math.round((stats.totalCorrect/stats.totalAnswered)*100):0}%`,icon:<Icon name="sharp-shooter" size={30} bare/>},{label:"Subjects",value:`${subjects.length}`,icon:<Icon name="subjects" size={30} bare/>}].map(s=>(
           <div key={s.label} className="ap-card" style={{padding:"14px 12px",textAlign:"center"}}>
-            <div style={{fontSize:20,marginBottom:4}}>{s.icon}</div>
+            <div style={{marginBottom:4}}>{s.icon}</div>
             <div style={{fontSize:20,fontWeight:700,color:text(d),fontFamily:"'Space Grotesk',sans-serif"}}>{s.value}</div>
             <div style={{fontSize:11,color:muted(d),marginTop:2}}>{s.label}</div>
           </div>
@@ -896,7 +896,7 @@ function HomeScreen({user,licence,stats,subjects,history,dark:d,onSelectSubject,
       <div className="ap-card" style={{padding:20,marginBottom:24,border:`1px solid rgba(0,212,106,0.2)`,cursor:"pointer"}} onClick={onDailyChallenge}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><span style={{fontSize:20}}>⚡</span><span style={{fontSize:14,fontWeight:700,color:C.green}}>Daily Challenge</span><span className="tag tag-green">+50 XP</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}><Icon name="daily-challenge" size={22} bare /><span style={{fontSize:14,fontWeight:700,color:C.green}}>Daily Challenge</span><span className="tag tag-green">+50 XP</span></div>
             <p style={{fontSize:13,color:muted(d)}}>10 random questions · All subjects · Timed</p>
           </div>
           <button className="ap-btn-primary" style={{padding:"10px 18px",fontSize:13,whiteSpace:"nowrap"}}>Fly Now ✈️</button>
