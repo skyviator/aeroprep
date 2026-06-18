@@ -1008,6 +1008,19 @@ function ExamPickerScreen({subject,dark:d,onStart,onBack}) {
   const [qCount,setQCount]=useState(20);
   const [timed,setTimed]=useState(false);
   const [minutes,setMinutes]=useState(30);
+  const [subtopic,setSubtopic]=useState(null);
+  const [subtopics,setSubtopics]=useState([]);
+  useEffect(()=>{
+    sbFetch(`questions?subject_code=eq.${subject.subject_code}&needs_review=eq.false&select=subtopic_code,subtopic_name`)
+      .then(rows=>{
+        const seen=new Set();
+        const uniq=[];
+        for(const r of rows){if(r.subtopic_code&&!seen.has(r.subtopic_code)){seen.add(r.subtopic_code);uniq.push({subtopic_code:r.subtopic_code,subtopic_name:r.subtopic_name||r.subtopic_code});}}
+        uniq.sort((a,b)=>a.subtopic_code.localeCompare(b.subtopic_code));
+        setSubtopics(uniq);
+      })
+      .catch(()=>{});
+  },[subject.subject_code]);
   const MODES=[
     {id:"practice",icon:"practice-mode",label:"Practice Mode",desc:"Instant feedback after each question",tag:"Recommended",tc:"tag-green"},
     {id:"mock",icon:"mock-exam",label:"Mock Exam",desc:"Exam conditions — results at the end",tag:"Exam Sim",tc:"tag-blue"},
@@ -1034,6 +1047,13 @@ function ExamPickerScreen({subject,dark:d,onStart,onBack}) {
       {mode&&(
         <div className="ap-card scale-in" style={{padding:20,marginBottom:24}}>
           <h3 style={{fontSize:14,fontWeight:600,color:text(d),marginBottom:16}}>Configure session</h3>
+          {subtopics.length>0&&<div style={{marginBottom:16}}>
+            <label style={{fontSize:13,color:muted(d),display:"block",marginBottom:8}}>Topic</label>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button key="all" onClick={()=>setSubtopic(null)} style={{padding:"8px 16px",borderRadius:8,fontSize:13,fontWeight:600,background:subtopic===null?C.green:"transparent",color:subtopic===null?"#000":text(d),border:`1px solid ${subtopic===null?C.green:border(d)}`}}>All topics</button>
+              {subtopics.map(s=><button key={s.subtopic_code} onClick={()=>setSubtopic(s.subtopic_code)} style={{padding:"8px 16px",borderRadius:8,fontSize:13,fontWeight:600,background:subtopic===s.subtopic_code?C.green:"transparent",color:subtopic===s.subtopic_code?"#000":text(d),border:`1px solid ${subtopic===s.subtopic_code?C.green:border(d)}`}}>{s.subtopic_name}</button>)}
+            </div>
+          </div>}
           <div style={{marginBottom:16}}>
             <label style={{fontSize:13,color:muted(d),display:"block",marginBottom:8}}>Number of questions</label>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -1051,7 +1071,7 @@ function ExamPickerScreen({subject,dark:d,onStart,onBack}) {
           {timed&&<div style={{marginTop:16}}><label style={{fontSize:13,color:muted(d),display:"block",marginBottom:8}}>Time limit: {minutes} minutes</label><input type="range" min="5" max="120" step="5" value={minutes} onChange={e=>setMinutes(+e.target.value)} style={{width:"100%",accentColor:C.green}}/></div>}
         </div>
       )}
-      {mode&&<button className="ap-btn-primary" style={{width:"100%",fontSize:16,padding:"16px"}} onClick={()=>onStart({mode,qCount,timed,minutes})}>Start {MODES.find(m2=>m2.id===mode)?.label}</button>}
+      {mode&&<button className="ap-btn-primary" style={{width:"100%",fontSize:16,padding:"16px"}} onClick={()=>onStart({mode,qCount,timed,minutes,subtopic})}>Start {MODES.find(m2=>m2.id===mode)?.label}</button>}
     </div>
   );
 }
@@ -1401,7 +1421,7 @@ export default function App() {
     setLoading(true);
     try{
       const licCols=LICENCE_COLS[licence.licence_type]||["applicable_all"];
-      let url=`questions?subject_code=eq.${subject.subject_code}&${licCols[0]}=eq.true&needs_review=eq.false&limit=500`;
+      let url=`questions?subject_code=eq.${subject.subject_code}&${licCols[0]}=eq.true&needs_review=eq.false${cfg.subtopic?`&subtopic_code=eq.${cfg.subtopic}`:""}&limit=500`;
       if(cfg.mode==="weak"){
         const wids=history.filter(h=>!h.is_correct&&h.subject_code===subject.subject_code).map(h=>h.question_id);
         if(!wids.length){alert("No weak areas found yet! Practice first.");setLoading(false);return;}
