@@ -38,6 +38,9 @@ async function getAIAnalysis(history) {
 }
 
 
+function licenceKey(lic){
+  return `${(lic.aircraft_type||"air").toLowerCase()}_${(lic.licence_type||"").toLowerCase()}`;
+}
 const LICENCE_COLS = {
   air_atpl: ["air_atpl","air_cpl","air_ppl","applicable_all"],
   air_cpl: ["air_cpl","air_ppl","applicable_all"],
@@ -1385,7 +1388,7 @@ export default function App() {
   async function loadUserData(u,lic){
     setLoading(true);
     try{
-      const licCols=LICENCE_COLS[lic.licence_type]||["applicable_all"];
+      const licCols=LICENCE_COLS[licenceKey(lic)]||["applicable_all"];
       const raw=await sbFetch(`questions?select=subject_code,subject_name&${licCols[0]}=eq.true&needs_review=eq.false&limit=1000`);
       const sm={};
       raw.forEach(q=>{if(!sm[q.subject_code])sm[q.subject_code]={subject_code:q.subject_code,subject_name:q.subject_name,total:0};sm[q.subject_code].total++;});
@@ -1420,7 +1423,7 @@ export default function App() {
   async function startQuiz(subject,cfg){
     setLoading(true);
     try{
-      const licCols=LICENCE_COLS[licence.licence_type]||["applicable_all"];
+      const licCols=LICENCE_COLS[licenceKey(licence)]||["applicable_all"];
       let url=`questions?subject_code=eq.${subject.subject_code}&${licCols[0]}=eq.true&needs_review=eq.false${cfg.subtopic?`&subtopic_code=eq.${cfg.subtopic}`:""}&limit=500`;
       if(cfg.mode==="weak"){
         const wids=history.filter(h=>!h.is_correct&&h.subject_code===subject.subject_code).map(h=>h.question_id);
@@ -1437,7 +1440,7 @@ export default function App() {
   async function startDailyChallenge(){
     setLoading(true);
     try{
-      const licCols=LICENCE_COLS[licence.licence_type]||["applicable_all"];
+      const licCols=LICENCE_COLS[licenceKey(licence)]||["applicable_all"];
       const qs=await sbFetch(`questions?${licCols[0]}=eq.true&needs_review=eq.false&limit=500`);
       setQuizQuestions(qs.sort(()=>Math.random()-0.5).slice(0,10));
       setQuizConfig({mode:"timed_sprint",qCount:10,timed:true,minutes:10,subjectCode:"daily",isDaily:true});
