@@ -143,13 +143,7 @@ function GlobalStyles({dark:d}) {
 function Logo({size=32}) {
   return (
     <div style={{display:"flex",alignItems:"center",gap:10}}>
-      <svg width={size} height={size} viewBox="0 0 40 40" fill="none">
-        <rect width="40" height="40" rx="10" fill={C.green}/>
-        <path d="M8 26L16 14L22 20L28 12L32 16" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <circle cx="32" cy="16" r="2.5" fill="#000"/>
-        <path d="M20 28H32" stroke="#000" strokeWidth="2" strokeLinecap="round"/>
-        <path d="M8 28H14" stroke="#000" strokeWidth="2" strokeLinecap="round"/>
-      </svg>
+      <img src="/logo-green-mark.png" alt="AeroPrep" style={{height:size,width:"auto"}}/>
       <div>
         <div style={{fontFamily:"'Space Grotesk',sans-serif",fontWeight:700,fontSize:size*0.5,color:C.green,lineHeight:1}}>AeroPrep</div>
         <div style={{fontSize:size*0.28,color:"#6B7280",lineHeight:1,marginTop:1}}>by FTA</div>

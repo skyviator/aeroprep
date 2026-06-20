@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.ico','favicon-32.png','favicon-16.png','apple-touch-icon.png','icon-192.png','icon-512.png','icon-maskable-512.png','logo-green-mark.png'],
       manifest: {
         name: 'AeroPrep by FTA',
         short_name: 'AeroPrep',
