@@ -811,6 +811,159 @@ function AdminReview({dark:d}) {
   );
 }
 
+function AdminNeedsImage({dark:d}) {
+  const [questions,setQuestions]=useState([]);
+  const [figuresList,setFiguresList]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [selected,setSelected]=useState(null);
+  const [figNum,setFigNum]=useState("");
+  const [figFile,setFigFile]=useState(null);
+  const [saving,setSaving]=useState(false);
+  const [modalErr,setModalErr]=useState("");
+  const [confirmMissing,setConfirmMissing]=useState(false);
+
+  useEffect(()=>{loadAll();},[]);
+
+  async function loadAll(){
+    setLoading(true);
+    try{
+      const [qr,fr]=await Promise.all([adminAction("questions.list_needs_image"),adminAction("figures.list")]);
+      setQuestions(qr.data||qr||[]);
+      setFiguresList(fr.data||fr||[]);
+    }catch(e){console.error(e);}
+    setLoading(false);
+  }
+
+  function figureExists(subject,num){
+    return figuresList.some(f=>f.subject_code===subject&&Number(f.figure_number)===Number(num));
+  }
+
+  function openModal(q){
+    setSelected(q);
+    setFigNum(q.suggested_figure!=null?String(q.suggested_figure):"");
+    setFigFile(null);
+    setModalErr("");
+    setConfirmMissing(false);
+  }
+
+  function closeModal(){setSelected(null);setFigNum("");setFigFile(null);setModalErr("");setConfirmMissing(false);}
+
+  function pickFile(e){
+    const f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    if(f.size>4*1024*1024){setModalErr("Image is over 4MB — please compress it first.");return;}
+    const reader=new FileReader();
+    reader.onload=()=>setFigFile({base64:reader.result,type:f.type,preview:reader.result});
+    reader.readAsDataURL(f);
+    setModalErr("");
+  }
+
+  async function doSave(){
+    setSaving(true);setModalErr("");setConfirmMissing(false);
+    try{
+      const num=figNum===""?null:parseInt(figNum);
+      if(figFile&&num!=null){
+        const fr=await adminAction("figures.create",{subject_code:selected.subject_code,figure_number:num,file_base64:figFile.base64,content_type:figFile.type,caption:null});
+        if(!fr.success){setModalErr(fr.error||"Figure upload failed.");setSaving(false);return;}
+        setFiguresList(prev=>[...prev,{subject_code:selected.subject_code,figure_number:num}]);
+      }
+      const r=await adminAction("questions.update",{id:selected.id,figure_ref:num});
+      if(!r.success){setModalErr(r.error||"Save failed.");setSaving(false);return;}
+      closeModal();
+      const [qr,fr]=await Promise.all([adminAction("questions.list_needs_image"),adminAction("figures.list")]);
+      setQuestions(qr.data||qr||[]);
+      setFiguresList(fr.data||fr||[]);
+    }catch(e){setModalErr("Save failed.");}
+    setSaving(false);
+  }
+
+  async function handleSave(){
+    const num=figNum===""?null:parseInt(figNum);
+    if(!figFile&&num!=null&&!figureExists(selected.subject_code,num)){
+      setConfirmMissing(true);
+      return;
+    }
+    await doSave();
+  }
+
+  const inp={width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${border(d)}`,background:d?"rgba(0,0,0,0.2)":"#fff",color:text(d),fontSize:13,boxSizing:"border-box"};
+
+  return (
+    <div style={{maxWidth:900,margin:"0 auto"}}>
+      <h2 style={{fontSize:22,fontWeight:700,color:text(d),marginBottom:4}}>Needs Image</h2>
+      {loading?<p style={{color:muted(d),fontSize:14}}>Loading…</p>:
+       questions.length===0?<p style={{fontSize:14,color:muted(d)}}>No questions reference a missing figure. 🎉</p>:(
+        <>
+          <p style={{fontSize:13,color:muted(d),marginBottom:16}}>{questions.length} question{questions.length!==1?"s":""} referencing a figure</p>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {questions.map(q=>{
+              const exists=figureExists(q.subject_code,q.suggested_figure);
+              const linked=q.figure_ref!=null;
+              return (
+                <div key={q.id} className="ap-card ap-card-hover" onClick={()=>openModal(q)} style={{padding:"14px 18px",cursor:"pointer"}}>
+                  <div style={{display:"flex",gap:8,alignItems:"baseline",marginBottom:4,flexWrap:"wrap"}}>
+                    <span style={{fontSize:11,fontWeight:700,color:C.green,whiteSpace:"nowrap"}}>#{q.q_number}</span>
+                    <span style={{fontSize:11,color:muted(d),whiteSpace:"nowrap"}}>{q.subject_code}{q.subtopic_name?` · ${q.subtopic_name}`:""}</span>
+                    <span style={{fontSize:11,fontWeight:600,color:muted(d),whiteSpace:"nowrap"}}>→ Figure {q.suggested_figure}</span>
+                    <span className={`tag ${exists?"tag-green":"tag-amber"}`}>{exists?"✅ image uploaded":"⚠ image missing"}</span>
+                    <span className="tag" style={{background:d?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",color:muted(d)}}>{linked?"linked":"not linked"}</span>
+                  </div>
+                  <div style={{fontSize:13,color:text(d)}}>{(q.question||"").slice(0,90)}{(q.question||"").length>90?"…":""}</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {selected&&(
+        <div onClick={closeModal} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?"#1a1a2e":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:640,maxHeight:"90vh",overflowY:"auto",position:"relative"}}>
+            <button onClick={closeModal} style={{position:"absolute",top:16,right:16,background:"none",fontSize:20,color:muted(d),lineHeight:1}}>×</button>
+            <div style={{fontSize:11,color:muted(d),marginBottom:12}}>#{selected.q_number} · {selected.subject_code}{selected.subtopic_name?` · ${selected.subtopic_name}`:""}</div>
+            {selected.review_notes&&<div style={{fontSize:12,color:C.red,background:d?"rgba(255,59,48,0.1)":"rgba(255,59,48,0.07)",padding:"8px 12px",borderRadius:8,marginBottom:14}}>{selected.review_notes}</div>}
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:12,color:muted(d),marginBottom:4}}>Question</div>
+              <div style={{fontSize:13,color:text(d),background:d?"rgba(255,255,255,0.04)":"rgba(0,0,0,0.03)",padding:"10px 12px",borderRadius:8,lineHeight:1.5}}>{selected.question}</div>
+            </div>
+            {["a","b","c","d"].map(opt=>(
+              <div key={opt} style={{display:"flex",gap:8,marginBottom:6,alignItems:"flex-start"}}>
+                <span style={{fontSize:12,fontWeight:700,color:selected.correct_answer===opt.toUpperCase()?C.green:muted(d),width:16,flexShrink:0,paddingTop:2}}>{opt.toUpperCase()}</span>
+                <span style={{fontSize:13,color:text(d)}}>{selected[`option_${opt}`]}</span>
+              </div>
+            ))}
+            <div style={{marginTop:16,marginBottom:6}}>
+              <label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Figure number</label>
+              <input style={{...inp,width:120}} type="number" value={figNum} onChange={e=>{setFigNum(e.target.value);setConfirmMissing(false);}} placeholder="none"/>
+            </div>
+            {figNum!==""&&(
+              <div style={{fontSize:12,marginBottom:14,color:figureExists(selected.subject_code,figNum)?C.green:C.amber}}>
+                {figureExists(selected.subject_code,figNum)?`✅ Figure ${figNum} for ${selected.subject_code} already uploaded`:`⚠ Figure ${figNum} for ${selected.subject_code} not uploaded yet`}
+              </div>
+            )}
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Upload image</label>
+              <input type="file" accept="image/*" onChange={pickFile} style={{fontSize:13,color:text(d)}}/>
+              {figFile&&<img src={figFile.preview} alt="preview" style={{maxWidth:180,maxHeight:130,borderRadius:8,border:`1px solid ${border(d)}`,marginTop:10,display:"block"}}/>}
+            </div>
+            {confirmMissing&&(
+              <div style={{background:d?"rgba(255,149,0,0.12)":"rgba(255,149,0,0.08)",border:`1px solid ${C.amber}`,borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                <div style={{fontSize:13,color:C.amber,marginBottom:10}}>Figure {figNum} isn't uploaded. Save the link anyway?</div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={doSave} disabled={saving} className="ap-btn-primary" style={{padding:"8px 16px",fontSize:13,opacity:saving?0.5:1}}>{saving?"Saving…":"Save anyway"}</button>
+                  <button onClick={()=>setConfirmMissing(false)} style={{padding:"8px 16px",borderRadius:8,fontSize:13,border:`1px solid ${border(d)}`,background:"transparent",color:text(d)}}>Cancel</button>
+                </div>
+              </div>
+            )}
+            {modalErr&&<div style={{fontSize:13,color:C.red,marginBottom:12}}>{modalErr}</div>}
+            {!confirmMissing&&<button onClick={handleSave} disabled={saving} className="ap-btn-primary" style={{padding:"10px 18px",fontSize:13,opacity:saving?0.5:1}}>{saving?"Saving…":"Save"}</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminFigures({dark:d}) {
   const [figures,setFigures]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -970,7 +1123,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
     }catch(e){console.error(e);}
   }
 
-  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"figures",icon:"subjects",label:"Figures"},{id:"review",icon:"reports",label:"Review Queue"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
+  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"figures",icon:"subjects",label:"Figures"},{id:"review",icon:"reports",label:"Review Queue"},{id:"needsimage",icon:"subjects",label:"Needs Image"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
 
   return (
     <div style={{minHeight:"100vh",background:bg(d),display:"flex",flexDirection:"column"}}>
@@ -1000,6 +1153,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
           {tab==="reports"&&<AdminReports dark={d}/>}
           {tab==="figures"&&<AdminFigures dark={d}/>}
           {tab==="review"&&<AdminReview dark={d}/>}
+          {tab==="needsimage"&&<AdminNeedsImage dark={d}/>}
           {tab==="security"&&<AdminSecurity dark={d}/>}
           {tab==="admins"&&<AdminAdmins currentAdmin={admin} dark={d}/>}
         </div>
