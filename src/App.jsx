@@ -677,6 +677,140 @@ function AdminReports({dark:d}) {
   );
 }
 
+function AdminReview({dark:d}) {
+  const [questions,setQuestions]=useState([]);
+  const [figuresList,setFiguresList]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [selected,setSelected]=useState(null);
+  const [form,setForm]=useState({});
+  const [figFile,setFigFile]=useState(null);
+  const [saving,setSaving]=useState(false);
+  const [modalErr,setModalErr]=useState("");
+
+  useEffect(()=>{loadAll();},[]);
+
+  async function loadAll(){
+    setLoading(true);
+    try{
+      const [qr,fr]=await Promise.all([adminAction("questions.list_review"),adminAction("figures.list")]);
+      setQuestions(qr.data||qr||[]);
+      setFiguresList(fr.data||fr||[]);
+    }catch(e){console.error(e);}
+    setLoading(false);
+  }
+
+  function openModal(q){
+    setSelected(q);
+    setForm({question:q.question||"",option_a:q.option_a||"",option_b:q.option_b||"",option_c:q.option_c||"",option_d:q.option_d||"",correct_answer:q.correct_answer||"A",figure_ref:q.figure_ref??""});
+    setFigFile(null);
+    setModalErr("");
+  }
+
+  function closeModal(){setSelected(null);setForm({});setFigFile(null);setModalErr("");}
+
+  function pickFigFile(e){
+    const f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    if(f.size>4*1024*1024){setModalErr("Image is over 4MB — please compress it first.");return;}
+    const reader=new FileReader();
+    reader.onload=()=>setFigFile({base64:reader.result,type:f.type});
+    reader.readAsDataURL(f);
+  }
+
+  async function save(approve){
+    setSaving(true);setModalErr("");
+    try{
+      const figRef=form.figure_ref===""||form.figure_ref===null?null:parseInt(form.figure_ref);
+      if(figFile&&figRef){
+        const fr=await adminAction("figures.create",{subject_code:selected.subject_code,figure_number:figRef,file_base64:figFile.base64,content_type:figFile.type,caption:null});
+        if(!fr.success){setModalErr(fr.error||"Figure upload failed.");setSaving(false);return;}
+        setFiguresList(prev=>[...prev,{subject_code:selected.subject_code,figure_number:figRef}]);
+      }
+      const payload={id:selected.id,question:form.question,option_a:form.option_a,option_b:form.option_b,option_c:form.option_c,option_d:form.option_d,correct_answer:form.correct_answer,figure_ref:figRef};
+      if(approve)payload.approve=true;
+      const r=await adminAction("questions.update",payload);
+      if(!r.success){setModalErr(r.error||"Save failed.");setSaving(false);return;}
+      closeModal();
+      const qr=await adminAction("questions.list_review");
+      setQuestions(qr.data||qr||[]);
+    }catch(e){setModalErr("Save failed.");}
+    setSaving(false);
+  }
+
+  const figMissing=selected&&form.figure_ref!==""&&form.figure_ref!==null&&
+    !figuresList.some(f=>f.subject_code===selected.subject_code&&f.figure_number===parseInt(form.figure_ref));
+
+  const inp={width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${border(d)}`,background:d?"rgba(0,0,0,0.2)":"#fff",color:text(d),fontSize:13,boxSizing:"border-box"};
+
+  return (
+    <div style={{maxWidth:900,margin:"0 auto"}}>
+      <h2 style={{fontSize:22,fontWeight:700,color:text(d),marginBottom:4}}>Review Queue</h2>
+      {loading?<p style={{color:muted(d),fontSize:14}}>Loading…</p>:
+       questions.length===0?<p style={{fontSize:14,color:muted(d)}}>Nothing to review — all questions are live. 🎉</p>:(
+        <>
+          <p style={{fontSize:13,color:muted(d),marginBottom:16}}>{questions.length} flagged question{questions.length!==1?"s":""}</p>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {questions.map(q=>(
+              <div key={q.id} className="ap-card ap-card-hover" onClick={()=>openModal(q)} style={{padding:"14px 18px",cursor:"pointer"}}>
+                <div style={{display:"flex",gap:10,alignItems:"baseline",marginBottom:4}}>
+                  <span style={{fontSize:11,fontWeight:700,color:C.green,whiteSpace:"nowrap"}}>#{q.q_number}</span>
+                  <span style={{fontSize:11,color:muted(d),whiteSpace:"nowrap"}}>{q.subject_code}{q.subtopic_name?` · ${q.subtopic_name}`:""}</span>
+                </div>
+                <div style={{fontSize:13,color:text(d),marginBottom:q.review_notes?6:0}}>{(q.question||"").slice(0,90)}{(q.question||"").length>90?"…":""}</div>
+                {q.review_notes&&<div style={{fontSize:12,color:C.red,opacity:0.8}}>{q.review_notes}</div>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {selected&&(
+        <div onClick={closeModal} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?"#1a1a2e":"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:640,maxHeight:"90vh",overflowY:"auto",position:"relative"}}>
+            <button onClick={closeModal} style={{position:"absolute",top:16,right:16,background:"none",fontSize:20,color:muted(d),lineHeight:1}}>×</button>
+            <div style={{fontSize:11,color:muted(d),marginBottom:12}}>#{selected.q_number} · {selected.subject_code}{selected.subtopic_name?` · ${selected.subtopic_name}`:""}</div>
+            {selected.review_notes&&<div style={{fontSize:12,color:C.red,background:d?"rgba(255,59,48,0.1)":"rgba(255,59,48,0.07)",padding:"8px 12px",borderRadius:8,marginBottom:14}}>{selected.review_notes}</div>}
+            <div style={{marginBottom:12}}>
+              <label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Question</label>
+              <textarea rows={4} style={{...inp,resize:"vertical"}} value={form.question} onChange={e=>setForm(f=>({...f,question:e.target.value}))}/>
+            </div>
+            {["a","b","c","d"].map(opt=>(
+              <div key={opt} style={{marginBottom:10}}>
+                <label style={{fontSize:12,color:muted(d),display:"block",marginBottom:4}}>Option {opt.toUpperCase()}</label>
+                <input style={inp} value={form[`option_${opt}`]} onChange={e=>setForm(f=>({...f,[`option_${opt}`]:e.target.value}))}/>
+              </div>
+            ))}
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Correct answer</label>
+              <div style={{display:"flex",gap:8}}>
+                {["A","B","C","D"].map(a=>(
+                  <button key={a} onClick={()=>setForm(f=>({...f,correct_answer:a}))} style={{padding:"8px 18px",borderRadius:8,fontSize:13,fontWeight:700,background:form.correct_answer===a?C.green:"transparent",color:form.correct_answer===a?"#000":text(d),border:`1px solid ${form.correct_answer===a?C.green:border(d)}`}}>{a}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{marginBottom:figMissing?8:16}}>
+              <label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Figure number (optional)</label>
+              <input style={{...inp,width:120}} type="number" value={form.figure_ref} onChange={e=>setForm(f=>({...f,figure_ref:e.target.value}))} placeholder="none"/>
+            </div>
+            {figMissing&&(
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:12,color:C.amber,marginBottom:8}}>⚠ Figure {form.figure_ref} for subject {selected.subject_code} isn't uploaded yet.</div>
+                <input type="file" accept="image/*" onChange={pickFigFile} style={{fontSize:12,color:text(d)}}/>
+                {figFile&&<div style={{fontSize:11,color:C.green,marginTop:4}}>Image selected — will upload on save.</div>}
+              </div>
+            )}
+            {modalErr&&<div style={{fontSize:13,color:C.red,marginBottom:12}}>{modalErr}</div>}
+            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+              <button onClick={()=>save(false)} disabled={saving} style={{padding:"10px 18px",borderRadius:10,fontSize:13,fontWeight:600,cursor:"pointer",border:`1px solid ${border(d)}`,background:"transparent",color:text(d),opacity:saving?0.5:1}}>{saving?"Saving…":"Save & keep in review"}</button>
+              <button onClick={()=>save(true)} disabled={saving} className="ap-btn-primary" style={{padding:"10px 18px",fontSize:13,opacity:saving?0.5:1}}>{saving?"Saving…":"Save & approve (go live)"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AdminFigures({dark:d}) {
   const [figures,setFigures]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -836,7 +970,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
     }catch(e){console.error(e);}
   }
 
-  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"figures",icon:"subjects",label:"Figures"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
+  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"figures",icon:"subjects",label:"Figures"},{id:"review",icon:"reports",label:"Review Queue"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
 
   return (
     <div style={{minHeight:"100vh",background:bg(d),display:"flex",flexDirection:"column"}}>
@@ -865,6 +999,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
           {tab==="students"&&<AdminStudents dark={d}/>}
           {tab==="reports"&&<AdminReports dark={d}/>}
           {tab==="figures"&&<AdminFigures dark={d}/>}
+          {tab==="review"&&<AdminReview dark={d}/>}
           {tab==="security"&&<AdminSecurity dark={d}/>}
           {tab==="admins"&&<AdminAdmins currentAdmin={admin} dark={d}/>}
         </div>
