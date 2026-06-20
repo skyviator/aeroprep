@@ -12,16 +12,17 @@ export default defineConfig({
         name: 'AeroPrep by FTA',
         short_name: 'AeroPrep',
         description: 'ATPL & CPL exam preparation by Flyaway Training Academy',
-        theme_color: '#00D46A',
-        background_color: '#0A0F1E',
+        theme_color: '#0b111d',
+        background_color: '#0b111d',
         display: 'standalone',
         orientation: 'portrait-primary',
         start_url: '/',
         scope: '/',
         icons: [
-          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
-          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png', purpose: 'any' }
         ]
       },
       workbox: {
