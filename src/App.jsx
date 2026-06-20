@@ -686,6 +686,8 @@ function AdminFigures({dark:d}) {
   const [file,setFile]=useState(null);
   const [busy,setBusy]=useState(false);
   const [msg,setMsg]=useState("");
+  const [batchFiles,setBatchFiles]=useState([]);
+  const [batchBusy,setBatchBusy]=useState(false);
   useEffect(()=>{load();},[]);
   async function load(){
     setLoading(true);
@@ -716,11 +718,65 @@ function AdminFigures({dark:d}) {
     try{await adminAction("figures.delete",{id});await load();}catch(e){console.error(e);}
     setBusy(false);
   }
+  function pickBatch(e){
+    const files=Array.from(e.target.files||[]);
+    setBatchFiles(files.map(f=>{
+      const base=f.name.replace(/\.[^.]+$/,"");
+      const m=base.match(/^(\d{3})-(\d+)$/);
+      const tooBig=f.size>4*1024*1024;
+      const invalid=!m||tooBig;
+      return {file:f,subject_code:m?m[1]:null,figure_number:m?parseInt(m[2]):null,invalid,
+        error:tooBig?"File exceeds 4MB":!m?"Filename doesn't match 022-01 pattern":null,status:"pending"};
+    }));
+  }
+  async function uploadBatch(){
+    if(!batchFiles.length)return;
+    setBatchBusy(true);
+    for(let i=0;i<batchFiles.length;i++){
+      const bf=batchFiles[i];
+      if(bf.invalid)continue;
+      setBatchFiles(prev=>prev.map((x,j)=>j===i?{...x,status:"uploading"}:x));
+      try{
+        const base64=await new Promise((resolve,reject)=>{
+          const reader=new FileReader();
+          reader.onload=()=>resolve(reader.result);
+          reader.onerror=reject;
+          reader.readAsDataURL(bf.file);
+        });
+        const r=await adminAction("figures.create",{subject_code:bf.subject_code,figure_number:bf.figure_number,file_base64:base64,content_type:bf.file.type,caption:null});
+        setBatchFiles(prev=>prev.map((x,j)=>j===i?{...x,status:r.success?"done":"error",error:r.success?null:r.error||"Upload failed"}:x));
+      }catch(e){
+        setBatchFiles(prev=>prev.map((x,j)=>j===i?{...x,status:"error",error:"Upload failed"}:x));
+      }
+    }
+    setBatchBusy(false);
+    await load();
+  }
   const inp={width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${border(d)}`,background:d?"rgba(0,0,0,0.2)":"#fff",color:text(d),fontSize:13,boxSizing:"border-box"};
+  const statusIcon={pending:"⏳",uploading:"⬆️",done:"✅",error:"❌"};
+  const validCount=batchFiles.filter(bf=>!bf.invalid).length;
   return (
     <div style={{maxWidth:900,margin:"0 auto"}}>
       <h2 style={{fontSize:22,fontWeight:700,color:text(d),marginBottom:4}}>Figures</h2>
       <p style={{fontSize:13,color:muted(d),marginBottom:20}}>Upload reference images. A student sees the image on any question whose figure number matches (same subject).</p>
+      <div className="ap-card" style={{padding:20,marginBottom:16}}>
+        <h3 style={{fontSize:14,fontWeight:600,color:text(d),marginBottom:6}}>Batch upload</h3>
+        <p style={{fontSize:12,color:muted(d),marginBottom:12}}>Name files like <code style={{background:d?"rgba(255,255,255,0.08)":"rgba(0,0,0,0.06)",padding:"1px 5px",borderRadius:4}}>022-01.jpg</code> — subject code then figure number. Files over 4 MB or with wrong names are skipped.</p>
+        <div style={{marginBottom:12}}><input type="file" accept="image/*" multiple onChange={pickBatch} style={{fontSize:13,color:text(d)}}/></div>
+        {batchFiles.length>0&&(
+          <div style={{maxHeight:220,overflowY:"auto",marginBottom:12,border:`1px solid ${border(d)}`,borderRadius:8}}>
+            {batchFiles.map((bf,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderBottom:i<batchFiles.length-1?`1px solid ${border(d)}`:"none",opacity:bf.invalid?0.45:1}}>
+                <span style={{fontSize:15,width:20,textAlign:"center"}}>{bf.invalid?"❌":statusIcon[bf.status]}</span>
+                <span style={{fontSize:13,color:text(d),flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{bf.file.name}</span>
+                {bf.subject_code&&<span style={{fontSize:12,color:muted(d),whiteSpace:"nowrap"}}>{bf.subject_code} · Fig {bf.figure_number}</span>}
+                {bf.error&&<span style={{fontSize:11,color:C.red,whiteSpace:"nowrap"}}>{bf.error}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+        {validCount>0&&<button onClick={uploadBatch} disabled={batchBusy} className="ap-btn-primary" style={{padding:"10px 18px",fontSize:13,opacity:batchBusy?0.6:1}}>{batchBusy?"Uploading…":`Upload all (${validCount} file${validCount!==1?"s":""})`}</button>}
+      </div>
       <div className="ap-card" style={{padding:20,marginBottom:24}}>
         <h3 style={{fontSize:14,fontWeight:600,color:text(d),marginBottom:14}}>Upload a figure</h3>
         <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>
