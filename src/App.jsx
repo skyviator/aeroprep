@@ -891,12 +891,13 @@ function AdminNeedsImage({dark:d}) {
   return (
     <div style={{maxWidth:900,margin:"0 auto"}}>
       <h2 style={{fontSize:22,fontWeight:700,color:text(d),marginBottom:4}}>Needs Image</h2>
-      {loading?<p style={{color:muted(d),fontSize:14}}>Loading…</p>:
-       questions.length===0?<p style={{fontSize:14,color:muted(d)}}>No questions reference a missing figure. 🎉</p>:(
+      {loading?<p style={{color:muted(d),fontSize:14}}>Loading…</p>:(()=>{
+        const visible=questions.filter(q=>q.suggested_figure!=null&&!(q.figure_ref!=null&&figureExists(q.subject_code,q.suggested_figure)));
+        return visible.length===0?<p style={{fontSize:14,color:muted(d)}}>No questions reference a missing figure. 🎉</p>:(
         <>
-          <p style={{fontSize:13,color:muted(d),marginBottom:16}}>{questions.length} question{questions.length!==1?"s":""} referencing a figure</p>
+          <p style={{fontSize:13,color:muted(d),marginBottom:16}}>{visible.length} question{visible.length!==1?"s":""} referencing a figure</p>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {questions.map(q=>{
+            {visible.map(q=>{
               const exists=figureExists(q.subject_code,q.suggested_figure);
               const linked=q.figure_ref!=null;
               return (
@@ -914,7 +915,7 @@ function AdminNeedsImage({dark:d}) {
             })}
           </div>
         </>
-      )}
+      );})()}
 
       {selected&&(
         <div onClick={closeModal} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
