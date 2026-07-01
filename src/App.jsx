@@ -245,7 +245,8 @@ function AdminKeys({dark:d}) {
   async function generate(){
     setGenerating(true);
     try{
-      const r=await adminAction("keys.create",{licence_type:form.licenceType,aircraft_type:form.licenceType.startsWith("air")?"AIR":"HELI",duration_days:form.duration*30,quantity:form.quantity,student_name:form.studentName,notes:form.notes});
+      const [ac,lvl]=form.licenceType.split("_");
+      const r=await adminAction("keys.create",{licence_type:lvl.toUpperCase(),aircraft_type:ac.toLowerCase(),duration_days:form.duration*30,quantity:form.quantity,student_name:form.studentName,notes:form.notes});
       if(!r.success){alert(r.error||"Failed to generate key.");return;}
       setNewKeys(r.data||[]);
       await load();
@@ -319,7 +320,7 @@ function AdminKeys({dark:d}) {
               {newKeys.map(k=>(
                 <div key={k.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:d?"rgba(0,212,106,0.08)":"rgba(0,212,106,0.05)",borderRadius:10,marginBottom:8,border:"1px solid rgba(0,212,106,0.15)"}}>
                   <code style={{flex:1,fontSize:15,fontWeight:700,color:C.green,letterSpacing:"0.05em"}}>{k.key_code}</code>
-                  <span style={{fontSize:11,color:muted(d)}}>{LICENCE_LABELS[k.licence_type]} · {LICENCE_DURATIONS.find(x=>x.months===form.duration)?.label}</span>
+                  <span style={{fontSize:11,color:muted(d)}}>{LICENCE_LABELS[form.licenceType]} · {LICENCE_DURATIONS.find(x=>x.months===form.duration)?.label}</span>
                   <button onClick={()=>copyKey(k.key_code,k.id)} style={{padding:"5px 12px",borderRadius:8,background:copied===k.id?C.green:"rgba(0,212,106,0.15)",color:copied===k.id?"#000":C.green,fontSize:12,fontWeight:600}}>{copied===k.id?"✓ Copied":"Copy"}</button>
                 </div>
               ))}
