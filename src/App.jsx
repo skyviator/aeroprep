@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Icon } from "./icons.jsx";
+import Papa from "papaparse";
 
 const SB_URL = "https://lxzeqqzhsharbocxpvqg.supabase.co";
 const SB_KEY = "sb_publishable_336LVuv08rcJtp86WswWFQ_rugDbPWT";
@@ -805,6 +806,148 @@ function AdminReview({dark:d}) {
   );
 }
 
+function AdminImport({dark:d}) {
+  const [rows,setRows]=useState([]);
+  const [subjectCode,setSubjectCode]=useState("");
+  const [subjectName,setSubjectName]=useState("");
+  const [parseErr,setParseErr]=useState("");
+  const [importing,setImporting]=useState(false);
+  const [result,setResult]=useState(null);
+  const [importErr,setImportErr]=useState("");
+
+  function handleFile(e){
+    const f=e.target.files&&e.target.files[0];
+    if(!f)return;
+    setRows([]);setParseErr("");setResult(null);setImportErr("");setSubjectCode("");setSubjectName("");
+    Papa.parse(f,{
+      header:true,
+      skipEmptyLines:true,
+      complete:(res)=>{
+        if(res.errors&&res.errors.length&&!res.data.length){setParseErr(res.errors[0].message);return;}
+        const data=res.data;
+        // auto-detect subject from most common subtopic_code prefix
+        const freq={};
+        data.forEach(r=>{if(r.subtopic_code){const pfx=(r.subtopic_code||"").slice(0,3);freq[pfx]=(freq[pfx]||0)+1;}});
+        const detected=Object.entries(freq).sort((a,b)=>b[1]-a[1])[0];
+        setSubjectCode(detected?detected[0]:"");
+        setRows(data);
+      },
+      error:(err)=>setParseErr(err.message),
+    });
+  }
+
+  async function doImport(){
+    setImporting(true);setResult(null);setImportErr("");
+    const BATCH=200;
+    let inserted=0,skipped=0,reviewed=0;
+    try{
+      for(let i=0;i<rows.length;i+=BATCH){
+        const batch=rows.slice(i,i+BATCH);
+        const r=await adminAction("questions.import",{subject_code:subjectCode.trim(),subject_name:subjectName.trim(),rows:batch});
+        if(!r.success){setImportErr(r.error||"Import failed on batch starting at row "+(i+1));setImporting(false);return;}
+        inserted+=(r.inserted||0);
+        skipped+=(r.skipped_count||0);
+        reviewed+=(r.review_count||0);
+      }
+      setResult({inserted,skipped,reviewed});
+    }catch(e){setImportErr("Import failed: "+e.message);}
+    setImporting(false);
+  }
+
+  // validation stats
+  const missingQ=rows.filter(r=>!r.q_number||!String(r.q_number).trim()).length;
+  const blankAnswer=rows.filter(r=>!r.correct_answer||!String(r.correct_answer).trim()).length;
+  const hasFigure=rows.filter(r=>r.figure_note&&String(r.figure_note).trim()).length;
+  const lowConf=rows.filter(r=>String(r.confidence||"").toLowerCase()==="low").length;
+  const willFlag=rows.filter(r=>String(r.confidence||"").toLowerCase()==="low"||!!(r.figure_note&&String(r.figure_note).trim())||!r.correct_answer||!String(r.correct_answer).trim()).length;
+  const codeWarn=subjectCode&&!/^\d{3}$/.test(subjectCode.trim());
+  const canImport=subjectName.trim()&&rows.length>0&&!importing;
+  const validRows=rows.length-missingQ;
+
+  const inp={width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${border(d)}`,background:d?"rgba(0,0,0,0.2)":"#fff",color:text(d),fontSize:13,boxSizing:"border-box"};
+  const th={padding:"6px 10px",fontSize:11,fontWeight:700,color:muted(d),textAlign:"left",borderBottom:`1px solid ${border(d)}`};
+  const td={padding:"6px 10px",fontSize:12,color:text(d),borderBottom:`1px solid ${border(d)}`};
+
+  return (
+    <div style={{maxWidth:900,margin:"0 auto"}}>
+      <h2 style={{fontSize:22,fontWeight:700,color:text(d),marginBottom:4}}>Import CSV</h2>
+      <p style={{fontSize:13,color:muted(d),marginBottom:20}}>Upload a question bank CSV. Expected columns: q_number, subtopic_code, subtopic_name, question, option_a–d, correct_answer, raw_licence_tag, figure_note, confidence.</p>
+
+      <div className="ap-card" style={{padding:20,marginBottom:16}}>
+        <div style={{marginBottom:16}}><input type="file" accept=".csv" onChange={handleFile} style={{fontSize:13,color:text(d)}}/></div>
+        {parseErr&&<p style={{fontSize:13,color:C.red,marginBottom:0}}>{parseErr}</p>}
+      </div>
+
+      {rows.length>0&&(
+        <>
+          <div className="ap-card" style={{padding:20,marginBottom:16}}>
+            <h3 style={{fontSize:14,fontWeight:600,color:text(d),marginBottom:14}}>Subject</h3>
+            <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:codeWarn?6:0}}>
+              <div style={{flex:"1 1 100px"}}>
+                <label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Subject code (auto-detected)</label>
+                <input style={{...inp}} value={subjectCode} onChange={e=>setSubjectCode(e.target.value)} placeholder="e.g. 091"/>
+              </div>
+              <div style={{flex:"2 1 200px"}}>
+                <label style={{fontSize:12,color:muted(d),display:"block",marginBottom:6}}>Subject name <span style={{color:C.red}}>*</span></label>
+                <input style={{...inp}} value={subjectName} onChange={e=>setSubjectName(e.target.value)} placeholder="e.g. Communications"/>
+              </div>
+            </div>
+            {codeWarn&&<p style={{fontSize:12,color:C.amber,margin:"6px 0 0"}}>⚠ Subject code doesn't look like 3 digits — double-check before importing.</p>}
+          </div>
+
+          <div className="ap-card" style={{padding:20,marginBottom:16}}>
+            <h3 style={{fontSize:14,fontWeight:600,color:text(d),marginBottom:14}}>Validation preview</h3>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:16}}>
+              {[
+                {label:"Total rows",value:rows.length,color:text(d)},
+                {label:"Will import",value:validRows,color:C.green},
+                {label:"Missing q_number (skip)",value:missingQ,color:missingQ>0?C.red:muted(d)},
+                {label:"Blank answer",value:blankAnswer,color:blankAnswer>0?C.amber:muted(d)},
+                {label:"Has figure note",value:hasFigure,color:hasFigure>0?C.amber:muted(d)},
+                {label:"Low confidence",value:lowConf,color:lowConf>0?C.amber:muted(d)},
+                {label:"Will flag needs_review",value:willFlag,color:willFlag>0?C.amber:muted(d)},
+              ].map(s=>(
+                <div key={s.label} className="ap-card" style={{padding:"12px 14px"}}>
+                  <div style={{fontSize:20,fontWeight:800,color:s.color,fontFamily:"'Space Grotesk',sans-serif"}}>{s.value}</div>
+                  <div style={{fontSize:11,color:muted(d),marginTop:2}}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr><th style={th}>#</th><th style={th}>Subtopic</th><th style={th}>Question</th><th style={th}>Ans</th><th style={th}>Conf</th></tr></thead>
+                <tbody>
+                  {rows.slice(0,10).map((r,i)=>(
+                    <tr key={i}>
+                      <td style={td}>{r.q_number||<span style={{color:C.red}}>—</span>}</td>
+                      <td style={td}>{r.subtopic_code||""}</td>
+                      <td style={td}>{(r.question||"").slice(0,60)}{(r.question||"").length>60?"…":""}</td>
+                      <td style={{...td,fontWeight:700,color:r.correct_answer?text(d):C.red}}>{r.correct_answer||"—"}</td>
+                      <td style={{...td,color:String(r.confidence||"").toLowerCase()==="low"?C.amber:muted(d)}}>{r.confidence||""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {rows.length>10&&<p style={{fontSize:11,color:muted(d),marginTop:6}}>Showing first 10 of {rows.length} rows.</p>}
+            </div>
+          </div>
+
+          {result&&(
+            <div style={{background:d?"rgba(0,212,106,0.08)":"rgba(0,212,106,0.06)",border:`1px solid ${C.green}`,borderRadius:10,padding:"14px 18px",marginBottom:16}}>
+              <span style={{fontSize:14,fontWeight:600,color:C.green}}>Imported {result.inserted}, skipped {result.skipped} duplicate{result.skipped!==1?"s":""}, {result.reviewed} flagged for review.</span>
+            </div>
+          )}
+          {importErr&&<div style={{fontSize:13,color:C.red,marginBottom:12,padding:"10px 14px",border:`1px solid ${C.red}`,borderRadius:8}}>{importErr}</div>}
+
+          <button onClick={doImport} disabled={!canImport} className="ap-btn-primary" style={{padding:"12px 24px",fontSize:14,opacity:canImport?1:0.4}}>
+            {importing?`Importing…`:`Import ${validRows} question${validRows!==1?"s":""}`}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AdminNeedsImage({dark:d}) {
   const [questions,setQuestions]=useState([]);
   const [figuresList,setFiguresList]=useState([]);
@@ -1118,7 +1261,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
     }catch(e){console.error(e);}
   }
 
-  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"figures",icon:"subjects",label:"Figures"},{id:"review",icon:"reports",label:"Review Queue"},{id:"needsimage",icon:"subjects",label:"Needs Image"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
+  const TABS=[{id:"dashboard",icon:"analytics",label:"Dashboard"},{id:"keys",icon:"licence-key",label:"Licence Keys"},{id:"students",icon:"students",label:"Students"},{id:"reports",icon:"reports",label:"Reports"},{id:"figures",icon:"subjects",label:"Figures"},{id:"review",icon:"reports",label:"Review Queue"},{id:"needsimage",icon:"subjects",label:"Needs Image"},{id:"import",icon:"subjects",label:"Import CSV"},{id:"security",icon:"security",label:"Security"},{id:"admins",icon:"admin",label:"Admins"}];
 
   return (
     <div style={{minHeight:"100vh",background:bg(d),display:"flex",flexDirection:"column"}}>
@@ -1149,6 +1292,7 @@ function AdminPanel({admin,onLogout,dark:d,toggleDark}) {
           {tab==="figures"&&<AdminFigures dark={d}/>}
           {tab==="review"&&<AdminReview dark={d}/>}
           {tab==="needsimage"&&<AdminNeedsImage dark={d}/>}
+          {tab==="import"&&<AdminImport dark={d}/>}
           {tab==="security"&&<AdminSecurity dark={d}/>}
           {tab==="admins"&&<AdminAdmins currentAdmin={admin} dark={d}/>}
         </div>
